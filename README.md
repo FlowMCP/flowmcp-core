@@ -15,7 +15,7 @@
 
 ### Installation
 ```bash
-npm install flowmcp
+npm install a6b8/flowMCP#beta
 ```
 
 ### Example Usage
