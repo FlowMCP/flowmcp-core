@@ -1,4 +1,4 @@
-[![CircleCI](https://img.shields.io/circleci/build/github/a6b8/multiThreadz/main)]() ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 # FlowMCP
 
