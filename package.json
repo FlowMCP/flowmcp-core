@@ -2,7 +2,7 @@
   "name": "flowmcp",
   "version": "1.0.0",
   "description": "Declarative REST API routing and validation with schema-based zod integration and test automation.",
-  "main": "./src/index.js",
+  "main": "./src/index.mjs",
   "directories": {
     "test": "tests"
   },
