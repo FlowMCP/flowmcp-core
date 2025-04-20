@@ -550,7 +550,7 @@ class Validation {
                         a = a.replace( '{{', '' ).replace( '}}', '' ) 
                         return a
                     } )
-                acc['requiredFromParameters'].add( ...t )
+                    .forEach( ( param ) => acc['requiredFromParameters'].add( param ) )
 
                 return acc
             }, { 'requiredFromParameters': new Set() } )
@@ -563,7 +563,7 @@ class Validation {
                     .filter( a => a.startsWith( '{{' ) )
                     .filter( a => !a === '{{USER_PARAM}}' )
                     .map( a => a.replace( '{{', '' ).replace( '}}', '' ) )
-                acc['requiredFromHeaders'].add( ...t )
+                    .forEach( ( param ) => acc['requiredFromHeaders'].add( param ) )
 
                 return acc
             }, { 'requiredFromHeaders': new Set() } )
