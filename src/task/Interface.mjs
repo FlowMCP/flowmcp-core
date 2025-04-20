@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { Validation } from './Validation.mjs'
 
 
 class Interface {
@@ -6,10 +6,9 @@ class Interface {
         const { routes } = schema
         const zodSchemas = Object
             .entries( routes )
-            .reduce( ( acc, [ key, route ] ) => {
-                const zodSchema = Interface
-                    .getZodSchema( { route, key } )
-                acc[ key ] = zodSchema
+            .reduce( ( acc, [ key, value ] ) => {
+                acc[ key ] = Interface
+                    .toServerTool( { key, value } )
                 return acc
             }, {} )
 
@@ -17,46 +16,53 @@ class Interface {
     }
 
 
-    static getTypes() {
-        const types = {
-            'positions': [ 'body', 'query', 'insert' ],
-            'primitives': [
-                [ 'string',    z.string()     ],
-                [ 'number',    z.number()     ],
-                [ 'boolean',   z.boolean()    ],
-                [ 'object',    z.object( {} ) ]
-            ],
-            'options': [
-                [ 'min(',      'min',      'float'   ],
-                [ 'max(',      'max',      'float'   ],
-                [ 'length(',   'length',   'int'     ],
-                [ 'enum(',     'enum',     'string'  ],
-                [ 'regex(',    'regex',    'string'  ],
-                [ 'optional(', 'optional', 'empty'   ],
-                [ 'default(',  'default',  'string'  ]
-            ]
-        }
+    static toServerTool( { schema, routeName } ) {
+        const routeValue = schema['routes'][ routeName ]
 
-        return types
+        const toolName = routeName
+            .replace( /([a-z0-9])([A-Z])/g, '$1_$2' )
+            .toLowerCase()
+        const { description } = routeValue
+        const zod = Interface
+            .getZodSchema( { route: routeValue, key: routeName } )
+
+        return { toolName, description, zod }
+    }
+
+
+    static getZodSchema( { route } ) {
+        const { parameters } = route
+        const zodSchema = parameters
+            .filter( ( param ) => {
+                if( !Object.hasOwn( param, 'z' ) ) { return false }
+                if( param['z'].length === 0 ) { return false }
+                return true
+            } )
+            .reduce( ( acc, param ) => {
+                const { position: { key }, z: { primitive, options } } = param
+
+                let _interface = Interface
+                    .#insertPrimitive( { primitive } )
+                _interface = Interface
+                    .#insertOptions( { _interface, options } )
+
+                acc[ key ] = _interface
+                return acc
+            }, {} )
+
+        return zodSchema
     }
 
 
     static #insertPrimitive( { primitive } ) {
-        const item = Interface
-            .getTypes()['primitives']
+        const item = Validation.getTypes()['enums']['primitives']
             .find( ( [ type ] ) => type === primitive )
-
-        if( !item ) {
-            throw new Error( `Unsupported zod type: ${primitive}` )
-        }
-
         return item[ 1 ]
     }
 
 
-    static #insertOptions( { _interface, z } ) {
-        _interface = z
-            .filter( ( _, index ) => index !== 0 )
+    static #insertOptions( { _interface, options } ) {
+        _interface = options
             .reduce( ( acc, option ) => {
                 _interface = Interface
                     .#insertOption( { _interface, option } )
@@ -68,13 +74,9 @@ class Interface {
 
 
     static #insertOption( { _interface, option } ) {
-        const item = Interface
-            .getTypes()['options']
+        const item = Validation
+            .getTypes()['enums']['options']
             .find( ( [ prefix ] ) => option.startsWith( prefix ) )
-
-        if( !item ) {
-            throw new Error( `Unsupported zod type: ${option}` )
-        }
 
         const [ _, zType, primitives ] = item
         let value = null
@@ -90,6 +92,11 @@ class Interface {
                 break
             case 'boolean':
                 value = option.slice( zType.length + 1, -1 ) === 'true'
+                break
+            case 'array':
+                value = option.slice( zType.length + 1, -1 )
+                    .split( ',' )
+                    .map( ( item ) => item.trim() )
                 break
             case 'empty':
                 value = null
@@ -126,32 +133,7 @@ class Interface {
 
         return _interface
     }
-
-
-    static getZodSchema( { route } ) {
-        const { parameters } = route
-        const zodSchema = parameters
-            .filter( ( param ) => {
-                if( !Object.hasOwn( param, 'z' ) ) { return false }
-                if( param['z'].length === 0 ) { return false }
-                return true
-            } )
-            .reduce( ( acc, a, index, arr ) => {
-                const { position, z } = a
-
-                let _interface = Interface
-                    .#insertPrimitive( { primitive: z[ 0 ] } )
-                _interface = Interface
-                    .#insertOptions( { _interface, z } )
-
-                acc[ position[ 0 ] ] = _interface
-                return acc
-            }, {} )
-
-        return zodSchema
-    }
 }
 
 
 export { Interface }
-

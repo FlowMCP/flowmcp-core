@@ -1,14 +1,12 @@
-import { testSchema as schema } from "./data/testSchema.mjs";
-import { FlowMCP } from "../src/index.mjs"
-import fs from 'fs'
+import { FlowMCP } from "./../src/index.mjs"
+import { getEnv } from './helpers/utils.mjs'
 
 
-const ETHERSCAN_API_KEY = fs
-    .readFileSync( './../../../.env', 'utf8' )
-    .split( '\n' )
-    .map( a => a.split( '=' ).map( b => b.trim() ) )
-    .find( a => a[ 0 ] === 'ETHERSCAN_API_KEY' )[ 1 ]
-
+const path = './../../../.env'
+const { ETHERSCAN_API_KEY } = getEnv( { 
+    path, 
+    'selection': [ [ 'ETHERSCAN_API_KEY', 'ETHERSCAN_API_KEY' ] ] 
+} )
 const serverParams = { ETHERSCAN_API_KEY }
 const tests = FlowMCP
     .getAllTests( { schema } )
@@ -17,3 +15,5 @@ const { status, messages, data } = await FlowMCP
     .fetch( { schema, userParams, serverParams, routeName } )
 
 console.log( 'status:', status )
+console.log( 'messages:', messages )
+console.log( 'data:', data )

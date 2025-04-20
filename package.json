@@ -14,6 +14,11 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.8.4",
+    "flatted": "^3.3.3",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "flowmcp-schemas": "github:a6b8/flowMCP-schemas"
   }
 }

@@ -3,13 +3,14 @@ class Test {
         const { routes } = schema
         const results = Object
             .entries( routes )
-            .reduce( ( acc, route, index ) => {
+            .reduce( ( acc, route ) => {
                 const [ name, routeData ] = route
                 const { tests } = routeData
                 tests
                     .forEach( ( test ) => {
                         acc.push( [ name, test ] )
                     } )
+
                 return acc
             }, [] )
 

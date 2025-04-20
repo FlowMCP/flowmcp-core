@@ -1,24 +1,102 @@
 import axios from 'axios'
+import { stringify as flattedStringify } from 'flatted'
+import util from 'util'
+
 
 
 class Fetch {
     static async from( { schema, userParams, serverParams, routeName } ) {
         const { requestMethod, url, headers, body, modifiers } = Fetch
             .#prepare( { schema, userParams, serverParams, routeName } )
-
         const struct = await Fetch
             .#execute( { requestMethod, url, headers, body, modifiers } )
 
+        const { dataAsString } = Fetch
+            .stringifyResponseData( { data: struct['data'] } )
+        struct['dataAsString'] = dataAsString
+        
         return struct
     }
 
 
+    static #prepare( { schema, userParams, serverParams, routeName }  ) {
+        const { root, headers: _headers, routes } = schema
+        const route = routes[ routeName ]
+        const { requestMethod, route: _route, modifiers } = route
+
+        const headers = Object
+            .entries( _headers )
+            .reduce( ( acc, [ key, value ] ) => {
+                acc[ key ] = Fetch.#insertValue( { 
+                    userParams, serverParams, key, value 
+                } )
+                return acc
+            }, {} )
+
+        const body = route['parameters']
+            .filter( ( { position: { location } } ) => location === 'body' )
+            .reduce( ( acc, { position: { key, value } } ) => {
+                const modValue = Fetch
+                    .#insertValue( { userParams, serverParams, key, value } )
+                acc[ key ] = modValue
+                return acc
+            }, {} )
+
+        let url = route['parameters']
+            .filter( ( { position: { location } } ) => location === 'insert' )
+            .reduce( ( acc, { position: { key, value } } ) => {
+                const to = Fetch
+                    .#insertValue( { userParams, serverParams, key, value } )
+                acc = acc.replaceAll( `:${key}`, to )
+                return acc
+            }, `${root}${_route}` )
+
+        const { query } = route['parameters']
+            .filter( ( { position: { location } } ) => location === 'query' )
+            .reduce( ( acc, { position: { key, value } }, index, arr ) => {
+                const modValue = Fetch
+                    .#insertValue( { userParams, serverParams, key, value } )
+                acc['iterate'][ key ] = modValue
+                if( index === arr.length - 1 ) {
+                    // acc['query'] = new URLSearchParams( acc['iterate'] ).toString()
+                    const str = new URLSearchParams( acc['iterate'] ).toString()
+                    acc['query'] = `?${str}`
+                }
+                return acc
+            }, { 'iterate': {}, 'query': '' } )
+        url += query
+
+        modifiers
+            .forEach( ( { phase, handler }, index ) => {
+                modifiers[ index ]['func'] = schema['handlers'][ handler ]
+            } )
+
+        return { requestMethod, url, headers, body, modifiers } 
+    }
+
+
     static async #execute( { requestMethod, url, headers, body, modifiers } ) {
+        let payload = { requestMethod, url, headers, body }
         let struct = {
             'status': true,
             'messages': [],
-            'data': null,
+            'data': null
         }
+
+        for( const { phase, func } of modifiers ) {
+            if( phase !== 'pre' ) { continue }
+            try {
+                const { struct: s, payload: p } = await func( { struct, payload, phase: 'pre' } )
+                struct = s
+                payload = p
+            } catch( e ) {
+                struct['status'] = false
+                struct['messages'].push( e.message )
+            }
+        }
+
+        struct['status'] = struct['messages'].length === 0
+        if( struct['status'] === false ) { return struct }
 
         switch( requestMethod.toUpperCase() ) {
             case 'GET':
@@ -50,10 +128,12 @@ class Fetch {
 
         if( struct['status'] === false ) { return struct }
 
-        for( const [ position, __, func ] of modifiers ) {
-            if( position !== 'post' ) { continue }
+        for( const { phase, func } of modifiers ) {
+            if( phase !== 'post' ) { continue }
             try {
-                struct = await func( struct )
+                const { struct: s, payload: p } = await func( { struct, payload, 'phase': 'post' } )
+                struct = s
+                payload = p
             } catch( e ) {
                 struct['status'] = false
                 struct['messages'].push( e.message )
@@ -61,90 +141,6 @@ class Fetch {
         }
 
         return struct
-    }
-
-
-    static #prepare( { schema, userParams, serverParams, routeName }  ) {
-        const { root, headers: _headers, routes } = schema
-        const route = routes[ routeName]
-        const { requestMethod, route: _route, modifiers } = route
-
-        const headers = Object
-            .entries( _headers )
-            .reduce( ( acc, [ key, value ] ) => {
-                acc[ key ] = Fetch.#insertValue( { 
-                    userParams, serverParams, key, value 
-                } )
-                return acc
-            }, {} )
-
-        const body = route['parameters']
-            .filter( ( param ) => {
-                const { position } = param
-                const [ _, __, type ] = position
-                if( type !== 'body' ) { return false }
-                return true
-            } )
-            .reduce( ( acc, param ) => {
-                const { position } = param
-                const [ key, value, _ ] = position
-                const modValue = Fetch
-                    .#insertValue( { userParams, serverParams, key, value } )
-                acc[ position[ 0 ] ] = modValue
-                return acc
-            }, {} )
-
-        let url = route['parameters']
-            .filter( ( param ) => { 
-                const { position } = param
-                const [ _, __, type ] = position
-                if( type !== 'insert' ) { return false }
-                return true
-            } )
-            .reduce( ( acc, param ) => {
-                const { position } = param
-                const [ key, value ] = position
-
-                const from = `:${key}`
-                const to = Fetch
-                    .#insertValue( { userParams, serverParams, key, value } )
-                acc = acc.replaceAll( from, to )
-                return acc
-            }, `${root}${_route}` )
-
-        const { query } = route['parameters']
-            .filter( ( param ) => {
-                const { position } = param
-                if( position[ 2 ] !== 'query' ) { return false }
-                return true
-            } )
-            .reduce( ( acc, param, index, arr ) => {
-                const { position } = param
-                const [ key, value ] = position
-                const modValue = Fetch
-                    .#insertValue( { userParams, serverParams, key, value } )
-
-                acc['iterate'][ key ] = modValue
-                if( index === arr.length - 1 ) {
-                    acc['query'] = new URLSearchParams( acc['iterate'] ).toString()
-                }
-                return acc
-            }, { 'iterate': {}, 'query': '' } )
-    
-        url += query === '' ? '' : `?${query}`
-
-        modifiers
-            .forEach( ( [ _, key ], index ) => {
-                const func = schema['modifiers'][ key ]
-
-                if( typeof func !== 'function' ) {
-                    throw new Error( `Modifier not found: ${key}` )
-                }
-                modifiers[ index ].push( func )
-            } )
-
-
-        return { requestMethod, url, headers, body, modifiers } 
     }
 
 
@@ -158,16 +154,28 @@ class Fetch {
             result = value.replace( '{{USER_PARAM}}', userParams[ key ] )
         } else if( value.startsWith( '{{' ) ) {
             const paramName = value.slice( 2, -2 )
-            if( !Object.hasOwn( serverParams, paramName ) ) {
-                throw new Error( `Server param not found: ${paramName}` )
-            }
-
             result = value.replace( '{{' + paramName + '}}', serverParams[ paramName ] )
         } else {
             result = value
         }
 
         return result
+    }
+
+
+    static stringifyResponseData( { data } ) {
+        let dataAsString = null
+        try {
+            dataAsString = JSON.stringify( data )
+        } catch( jsonError ) {
+            try {
+                dataAsString = flattedStringify( data )
+            } catch( flattedError ) {
+                dataAsString = util.inspect( data, { 'depth': null, 'compact': false } )
+            }
+        }
+
+        return { dataAsString }
     }
 }
 
