@@ -1,16 +1,16 @@
-import { FlowMCP } from "./../src/index.mjs"
+import { FlowMCP } from './../src/index.mjs'
 import { getEnv } from './helpers/utils.mjs'
+import { schema } from 'flowmcp-schemas/schemas/etherscan/schema.mjs'
 
 
-const path = './../../../.env'
 const { ETHERSCAN_API_KEY } = getEnv( { 
-    path, 
+    'path': './../../../.env', 
     'selection': [ [ 'ETHERSCAN_API_KEY', 'ETHERSCAN_API_KEY' ] ] 
 } )
 const serverParams = { ETHERSCAN_API_KEY }
 const tests = FlowMCP
     .getAllTests( { schema } )
-const [ routeName, userParams ] = tests[ 0 ]
+const { routeName, userParams } = tests[ 0 ]
 const { status, messages, data } = await FlowMCP
     .fetch( { schema, userParams, serverParams, routeName } )
 
