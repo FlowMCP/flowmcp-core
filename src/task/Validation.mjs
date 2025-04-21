@@ -344,8 +344,9 @@ class Validation {
                    messages.push( `${id}.phase: Unknown phase (${item['phase']}), choose from ${phases.join( ', ' )}.` )
                 }
 
-                if( !Object.keys( schema['handlers'] ).includes( item['handler'] ) ) {
-                    messages.push( `${id}.handler: Unknown handler (${item['handler']}), choose from ${Object.keys( schema['handlers'] ).join( ', ' )}.` )
+                const { handlerName } = item
+                if( !Object.keys( schema['handlers'] ).includes( handlerName ) ) {
+                    messages.push( `${id}.handler: Unknown handler (${handlerName}), choose from ${Object.keys( schema['handlers'] ).join( ', ' )}.` )
                 }
             } )
 
