@@ -41,7 +41,7 @@ class Validation {
                 ],
                 'modifiers': [
                     [ 'phase',                'string'              ],
-                    [ 'handler',              'string'              ]
+                    [ 'handlerName',          'string'              ]
                 ]
             },
             'enums': {
