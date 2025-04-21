@@ -67,8 +67,8 @@ class Fetch {
         url += query
 
         modifiers
-            .forEach( ( { phase, handler }, index ) => {
-                modifiers[ index ]['func'] = schema['handlers'][ handler ]
+            .forEach( ( { phase, handlerName }, index ) => {
+                modifiers[ index ]['func'] = schema['handlers'][ handlerName ]
             } )
 
         return { requestMethod, url, headers, body, modifiers } 
