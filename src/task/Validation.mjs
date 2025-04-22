@@ -532,7 +532,8 @@ class Validation {
                 const { position: { key, value, location } } = item
                 if( value === '{{USER_PARAM}}' ) {
                     const test = item['z']['options']
-                        .map( a => a.startsWith( 'optionalUserParams' ) )
+                        // .map( a => a.startsWith( 'optionalUserParams' ) )
+                        .map( a => a.startsWith( 'optional' ) )
                         .some( a => a ) 
                     if( test ) { acc['optionalUserParams'].push( key ) }
                     else { acc['requiredUserParams'].push( key ) }
