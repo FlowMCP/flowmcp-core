@@ -14,3 +14,4 @@ After you've done this, ensure you follow these characteristics precisely:
 - A parameter with the value {{USER_PARAM}} is always required unless the optional() key is specified in z.options.
 - A response can be processed subsequently by one or multiple post-processing steps, defined under modifiers.
 - The Spec is only fully satisfied if the schema is stored in a .mjs file, enabling an export as { schema }.
+- if a parameter in position.location has the value 'insert', it is expected that the key from position.key appears in the route as a string with the prefix ":". for example: api/:address/tx. this value is then replaced with the position.value value.

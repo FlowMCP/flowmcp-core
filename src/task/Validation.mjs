@@ -50,10 +50,10 @@ class Validation {
                 // 'phases':    [ 'pre',  'post'             ],
                 'phases': [ 'post' ],
                 'primitives': [
-                    [ 'string',    z.string()     ],
-                    [ 'number',    z.number()     ],
-                    [ 'boolean',   z.boolean()    ],
-                    [ 'object',    z.object( {} ) ]
+                    [ 'string()',    z.string()     ],
+                    [ 'number()',    z.number()     ],
+                    [ 'boolean()',   z.boolean()    ],
+                    [ 'object()',    z.object( {} ) ]
                 ],
                 'options': [
                     [ 'min(',      'min',      'float'   ],
@@ -290,6 +290,7 @@ class Validation {
                 if( !s5 ) { return messages }
 
                 const { enums: { primitives, options } } = Validation.getTypes()
+
                 if( !primitives.map( a => a[ 0 ] ).includes( item['z']['primitive'] ) ) {
                    messages.push( `${s}.z.primitive: ${item['z']['primitive']}` )
                 }
@@ -316,16 +317,20 @@ class Validation {
         }
 
         const { enums: { positions } } = Validation.getTypes()
+        const { requiredServerParams } = schema
+
         findInserts( route )
             .forEach( ( name, index ) => {
                 const s = `${id}.route.[${index}]`
-                const result = parameters
+                const fromParameters = parameters
                     .findIndex( ( a ) => {
                         const one = a['position']['location'] === positions[ 2 ]
                         const two = a['position']['key'] === name                    
                         return one && two
                     } )
-                if( result === -1 ) {
+                const fromServerParams = requiredServerParams
+                    .findIndex( ( a ) => a === name )
+                if( fromParameters === -1 && fromServerParams === -1 ) {
                     messages.push( `${s}: Missing parameter ${name} in route` )
                 }
             } )
@@ -559,11 +564,10 @@ class Validation {
         const { requiredFromHeaders } = Object
             .entries( schema['headers'] )
             .reduce( ( acc, [ key, value ], index, arr ) => {
-                const t = value
-                    .map( ( param ) => param['position']['value'] )
-                    .filter( a => a.startsWith( '{{' ) )
-                    .filter( a => !a === '{{USER_PARAM}}' )
-                    .map( a => a.replace( '{{', '' ).replace( '}}', '' ) )
+                if( typeof value !== 'string' ) { return acc }
+                const matches = [ ...value.matchAll( /{{(.*?)}}/g ) ]
+                const contents = matches
+                    .map( m => m[ 1 ] )
                     .forEach( ( param ) => acc['requiredFromHeaders'].add( param ) )
 
                 return acc
