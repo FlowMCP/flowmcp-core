@@ -1,28 +1,94 @@
 import axios from 'axios'
 import { stringify as flattedStringify } from 'flatted'
+import { Validation } from './Validation.mjs'
+
 import util from 'util'
 
 
-
 class Fetch {
-    static async from( { schema, userParams, serverParams, routeName } ) {
-        const { requestMethod, url, headers, body, modifiers } = Fetch
+    static async from({ schema, userParams, serverParams, routeName }) {
+        let struct = {
+            status: true,
+            messages: [],
+            data: null,
+            dataAsString: null
+        };
+    
+        const { requestMethod, url, headers, body, modifiers, _allParams } = Fetch
             .#prepare( { schema, userParams, serverParams, routeName } )
-        const struct = await Fetch
-            .#execute( { requestMethod, url, headers, body, modifiers } )
+        userParams = { ...userParams, _allParams }
+        let payload = { requestMethod, url, headers, body, modifiers }
+
+
+        await Validation
+            .getTypes()['enums']['phases']
+            .reduce( ( promise, phaseType ) => promise.then( async () => {
+                const relevantModifiers = modifiers
+                    .filter( ( { phase } ) => phase.includes( phaseType ) )
+                if( phaseType === "execute" && relevantModifiers.length === 0 ) {
+                    struct = await Fetch.#executeDefault( { struct, payload } )
+                } else if (relevantModifiers.length > 0) {
+                    const result = await Fetch.#modifierLoop( { struct, payload, userParams, routeName, phaseType } )
+                    struct = result.struct
+                    payload = result.payload
+                }
+            } ), Promise.resolve() )
 
         const { dataAsString } = Fetch
             .stringifyResponseData( { data: struct['data'] } )
         struct['dataAsString'] = dataAsString
-        
-        return struct
-    }
 
+        return { struct, payload }
+    }
+    
+
+
+/*
+    static async from1( { schema, userParams, serverParams, routeName } ) {
+        let struct = {
+            'status': true,
+            'messages': [],
+            'data': null,
+            'dataAsString': null
+        }
+
+        const { requestMethod, url, headers, body, modifiers } = Fetch
+            .#prepare( { schema, userParams, serverParams, routeName } )
+        
+        let payload = { requestMethod, url, headers, body, modifiers }
+
+        const { struct: s1, payload: p1 } = await Fetch
+            .#modifierLoop( { struct, payload, userParams, routeName, 'phaseType': 'pre' } )
+        struct = { ...s1 }; payload = { ...p1 }
+        if( struct['status'] === false ) { return { struct, payload } }
+
+        if( modifiers.map( ( { phase } ) => !phase.includes( 'execute' ) ).some( a => a ) )  {
+            struct = await Fetch
+                .#execute( { struct: { ...s1 }, payload: { ...p1 } } )
+        } else {
+            const { struct: s2, payload: p2 } = await Fetch
+                .#modifierLoop( { struct: { ...struct }, payload: { ...p1 }, userParams, routeName, 'phaseType': 'execute' } )
+            struct = { ...s2 }; payload = { ...p2 }
+        }
+
+        const { struct: s3, payload: p3 } = await Fetch
+            .#modifierLoop( { struct, payload, userParams, routeName, 'phaseType': 'post' } )
+        struct = { ...s3 }; payload = { ...p3 }
+        if( struct['status'] === false ) { return { struct, payload } }
+
+        const { dataAsString } = Fetch
+            .stringifyResponseData( { data: struct['data'] } )
+        struct['dataAsString'] = dataAsString
+
+        return { struct, payload }
+    }
+*/
 
     static #prepare( { schema, userParams, serverParams, routeName }  ) {
         const { root, headers: _headers, routes } = schema
         const route = routes[ routeName ]
-        const { requestMethod, route: _route, modifiers } = route
+        const { requestMethod, route: _route } = route
+        let { modifiers } = route
 
         const headers = Object
             .entries( _headers )
@@ -33,68 +99,82 @@ class Fetch {
                 return acc
             }, {} )
 
-        const body = route['parameters']
+        const parametersWithRequired = route['parameters']
+            .map( ( param ) => {
+                if( !Object.hasOwn( param, 'z' ) ) { 
+                    return { 'required': true, ...param }
+                }
+                const { z } = param
+                const required = z['options'].includes( 'optional()') ? false : true
+
+                return { required, ...param } 
+            } )
+
+        const body = parametersWithRequired
             .filter( ( { position: { location } } ) => location === 'body' )
-            .reduce( ( acc, { position: { key, value } } ) => {
+            .reduce( ( acc, { position: { key, value }, required } ) => {
                 const modValue = Fetch
-                    .#insertValue( { userParams, serverParams, key, value } )
+                    .#insertValue( { userParams, serverParams, key, value, required } )
                 acc[ key ] = modValue
                 return acc
             }, {} )
 
-        let url = route['parameters']
+        let url = parametersWithRequired
             .filter( ( { position: { location } } ) => location === 'insert' )
-            .reduce( ( acc, { position: { key, value } } ) => {
+            .reduce( ( acc, { position: { key, value }, required } ) => {
+
                 const to = Fetch
                     .#insertValue( { userParams, serverParams, key, value } )
-                acc = acc.replaceAll( `:${key}`, to )
+                acc = acc
+                    .replaceAll( `:${key}`, to )
+                    .replaceAll( `{{${key}}}`, to )
                 return acc
             }, `${root}${_route}` )
-
-        const { query } = route['parameters']
-            .filter( ( { position: { location } } ) => location === 'query' )
-            .reduce( ( acc, { position: { key, value } }, index, arr ) => {
-                const modValue = Fetch
-                    .#insertValue( { userParams, serverParams, key, value } )
-                acc['iterate'][ key ] = modValue
-                if( index === arr.length - 1 ) {
-                    // acc['query'] = new URLSearchParams( acc['iterate'] ).toString()
-                    const str = new URLSearchParams( acc['iterate'] ).toString()
-                    acc['query'] = `?${str}`
-                }
+        url = Object
+            .entries( serverParams )
+            .reduce( ( acc, [ key, value ] ) => {
+                acc = acc.replaceAll( `{{${key}}}`, value )
                 return acc
-            }, { 'iterate': {}, 'query': '' } )
+            }, url )
+
+        const { iterate } = parametersWithRequired
+            .filter( ( { position: { location } } ) => location === 'query' )
+            .reduce( ( acc, { position: { key, value }, required }, index, arr ) => {
+                const modValue = Fetch
+                    .#insertValue( { userParams, serverParams, key, value, required } )
+                if( modValue === undefined ) { return acc }
+
+                acc['iterate'][ key ] = modValue
+                return acc
+            }, { 'iterate': {} } )
+
+        let query = ''
+        query += new URLSearchParams( iterate ).toString()
+        query = query !== '' ? '?' + query : ''
         url += query
 
-        modifiers
-            .forEach( ( { phase, handlerName }, index ) => {
-                modifiers[ index ]['func'] = schema['handlers'][ handlerName ]
-            } )
+        modifiers = modifiers
+            .reduce( ( acc, { phase, handlerName }, index ) => {
+                const func = schema['handlers'][ handlerName ]
+                acc.push( { phase, handlerName, func } )
+                return acc
+            }, [] )
 
-        return { requestMethod, url, headers, body, modifiers } 
+        const _allParams = schema['routes'][ routeName ]['parameters']
+            .reduce( ( acc, { position: { key, value } } ) => {
+                const modValue = Fetch
+                    .#insertValue( { userParams, serverParams, key, value } )
+                if( modValue === undefined ) { return acc }
+                acc[ key ] = modValue
+                return acc
+            }, {} )
+
+        return { requestMethod, url, headers, body, modifiers, _allParams } 
     }
 
 
-    static async #execute( { requestMethod, url, headers, body, modifiers } ) {
-        let payload = { requestMethod, url, headers, body }
-        let struct = {
-            'status': true,
-            'messages': [],
-            'data': null
-        }
-
-        for( const { phase, func } of modifiers ) {
-            if( phase !== 'pre' ) { continue }
-            try {
-                const { struct: s, payload: p } = await func( { struct, payload, phase: 'pre' } )
-                struct = s
-                payload = p
-            } catch( e ) {
-                struct['status'] = false
-                struct['messages'].push( e.message )
-            }
-        }
-
+    static async #executeDefault( { struct, payload } ) {
+        const { requestMethod, url, headers, body, modifiers } = payload
         struct['status'] = struct['messages'].length === 0
         if( struct['status'] === false ) { return struct }
 
@@ -104,9 +184,10 @@ class Fetch {
                     const response = await axios.get( url, { headers } )
                     const { data } = response
                     struct['data'] = data
-                } catch( e ) {
+                } catch( error ) {
                     struct['status'] = false
-                    struct['messages'].push( e.message )
+                    const messages = Fetch.getErrorMessages( { error } )
+                    struct['messages'].push( ...messages )
                 }
                 break;
             case 'POST':
@@ -114,9 +195,10 @@ class Fetch {
                     const response = await axios.post( url, body, { headers } )
                     const { data } = response
                     struct['data'] = data
-                } catch( e ) {
+                } catch( error ) {
                     struct['status'] = false
-                    struct['messages'].push( e.message )
+                    const messages = Fetch.getErrorMessages( { error } )
+                    struct['messages'].push( ...messages )
                 }
 
                 break;
@@ -128,38 +210,78 @@ class Fetch {
 
         if( struct['status'] === false ) { return struct }
 
+        return struct
+    }
+
+
+    static async #modifierLoop( { struct, payload, userParams, routeName, phaseType } ) {
+        const { modifiers } = payload
         for( const { phase, func } of modifiers ) {
-            if( phase !== 'post' ) { continue }
+            if( phase !== phaseType ) { continue }
             try {
-                const { struct: s, payload: p } = await func( { struct, payload, 'phase': 'post' } )
-                struct = s
-                payload = p
+                const { struct: _struct, payload: _payload } = await func( { struct, payload, userParams, routeName, 'phase': phaseType } )
+                struct = _struct
+                payload = _payload
             } catch( e ) {
                 struct['status'] = false
                 struct['messages'].push( e.message )
             }
         }
 
-        return struct
+        return { struct, payload }
+    }
+    
+
+
+    static getErrorMessages( { error } ) {
+        let messages = []
+        if( error.response ) {
+            messages.push( `Status: ${error.response?.status}` )
+            messages.push( `Text: ${error.response?.statusText}` )
+            try { messages.push( `Data: ${JSON.stringify( error.response?.data ) }` ) } 
+            catch( _ ) { messages.push( `${error.response?.data}` )}
+        } else if( error.request ) {
+            messages.push( 'No response received from server.' )
+            messages.push( 'Request:', error.request )
+        } else {
+            messages.push( 'Error in setting up the request:', error.message )
+        }
+
+        return messages
     }
 
 
-    static #insertValue( { userParams, serverParams, key, value } ) {
-        let result = null
-        if( value === '{{USER_PARAM}}' ) {
-            if( !Object.hasOwn( userParams, key ) ) {
-                throw new Error( `User param not found: ${key}` )
-            }
 
-            result = value.replace( '{{USER_PARAM}}', userParams[ key ] )
-        } else if( value.startsWith( '{{' ) ) {
-            const paramName = value.slice( 2, -2 )
-            result = value.replace( '{{' + paramName + '}}', serverParams[ paramName ] )
-        } else {
-            result = value
+    static #insertValue( { userParams, serverParams, key, value, required } ) {
+        let type = null
+        let params = null
+        let paramName = null
+
+        if( value.includes( '{{USER_PARAM}}' ) ) { params = userParams; type = 'user' } 
+        else if( value.includes( '{{' ) ) { params = serverParams; type = 'server' }
+        if( !params ) { return value }
+
+        if( type === 'user' ) { paramName = key }
+        else if( type === 'server' ) {
+            const start = value.indexOf( '{{' )
+            const end = value.indexOf( '}}' )
+            if( start !== -1 && end !== -1 ) {
+                paramName = value.slice( start + 2, end ).trim()
+            } else {
+                throw new Error( `Invalid parameter format: ${value}` )
+            }
         }
 
-        return result
+        if( type === 'user' ) {
+            if( userParams[ key ] === undefined ) { return undefined }
+            value = value.replace( '{{USER_PARAM}}', userParams[ key ] )
+        } else if( type === 'server' ) {
+            value = value.replace( '{{' + paramName + '}}', params[ paramName ] )
+        } else {
+            throw new Error( `Invalid parameter type: ${type}` )
+        }
+
+        return value
     }
 
 

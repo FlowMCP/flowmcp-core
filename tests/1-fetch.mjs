@@ -1,6 +1,6 @@
 import { FlowMCP } from './../src/index.mjs'
 import { getEnv } from './helpers/utils.mjs'
-import { schema } from 'flowmcp-schemas/schemas/etherscan/schema.mjs'
+import { schema } from "flowmcp-schemas/schemas/thegraph/schema.mjs"
 
 
 const { ETHERSCAN_API_KEY } = getEnv( { 

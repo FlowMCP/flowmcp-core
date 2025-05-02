@@ -92,9 +92,10 @@ class FlowMCP {
         Validation.serverParams( { schema, serverParams } )
         Validation.routeName( { schema, routeName } )
         Validation.userParams( { schema, userParams, routeName } )
-        const result = await Fetch.from( { schema, userParams, serverParams, routeName } )
+        const { struct, payload } = await Fetch
+            .from( { schema, userParams, serverParams, routeName } )
 
-        return result
+        return struct
     }
 }
 

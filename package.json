@@ -1,16 +1,16 @@
 {
   "name": "flowmcp",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Declarative REST API routing and validation with schema-based zod integration and test automation.",
   "main": "./src/index.mjs",
   "directories": {
     "test": "tests"
   },
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "type": "module",
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -19,7 +19,10 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@erc725/erc725.js": "^0.27.2",
     "@modelcontextprotocol/sdk": "^1.9.0",
+    "ccxt": "^4.4.77",
+    "ethers": "^6.13.7",
     "flowmcp-schemas": "github:a6b8/flowMCP-schemas"
   }
-} 
+}

@@ -48,12 +48,13 @@ class Validation {
                 'methods':   [ 'GET',  'POST'             ],
                 'positions': [ 'body', 'query',  'insert' ],
                 // 'phases':    [ 'pre',  'post'             ],
-                'phases': [ 'post' ],
+                'phases': [ 'pre', 'execute', 'post' ],
                 'primitives': [
                     [ 'string()',    z.string()     ],
                     [ 'number()',    z.number()     ],
                     [ 'boolean()',   z.boolean()    ],
-                    [ 'object()',    z.object( {} ) ]
+                    [ 'object()',    z.object( {} ) ],
+                    [ 'array()',     z.array( z.string() ) ],
                 ],
                 'options': [
                     [ 'min(',      'min',      'float'   ],
@@ -75,6 +76,7 @@ class Validation {
 
 
     static schema( { schema } ) {
+        const id = 'schema'
         const struct = {
             'status': false,
             'messages': []
@@ -87,7 +89,7 @@ class Validation {
         } = Validation.getTypes()
 
         const { status: s1, messages: m1 } = Validation
-            .#testObject( {  object: schema, types: metaTypes } )
+            .#testObject( {  object: schema, types: metaTypes, id } )
         Validation.#error( { status: s1, messages: m1 } )
 
         const isValidVersion = ( str ) => /^\d+\.\d+\.\d+$/.test( str )
@@ -111,7 +113,7 @@ class Validation {
         const { status: s2, messages: m2 } = Object
             .keys( schema['routes'] )
             .reduce( ( acc, routeName ) => {
-                const messages = Validation.#route( { routeName, schema } )
+                const messages = Validation.#route( { routeName, schema, id } )
                 acc['messages'].push( ...messages )
                 return acc
             }, { 'status': false, 'messages': [] } )
@@ -252,15 +254,17 @@ class Validation {
     }
 
 
-    static #route( { routeName, schema } ) {
+    static #route( { routeName, schema, id='' } ) {
+
+
         const routeObj = schema['routes'][ routeName ]
-        const id = `${routeName}`
+        id = `${id}.${routeName}`
         const messages = []
 
         const { types: { route: routeTypes } } = Validation
             .getTypes()
         const { status: s2, messages: m2 } = Validation
-            .#testObject( { object: routeObj, types: routeTypes } )
+            .#testObject( { object: routeObj, types: routeTypes, id } )
        messages.push( ...m2 )
         if( !s2 ) { return messages }
 
@@ -270,6 +274,7 @@ class Validation {
         }
 
         const { parameters } = routeObj
+
         parameters
             .forEach( ( item, index ) => {
                 const s = `${id}.parameters.[${index}]`
@@ -285,16 +290,18 @@ class Validation {
 
                 const { types: { z: zTypes } } = Validation.getTypes()
                 const { status: s5, messages: m5 } = Validation
-                    .#testObject( { object: item['z'], types: zTypes } )
+                    .#testObject( { object: item['z'], types: zTypes, id } )
+
                messages.push( ...m5 )
                 if( !s5 ) { return messages }
 
                 const { enums: { primitives, options } } = Validation.getTypes()
 
                 if( !primitives.map( a => a[ 0 ] ).includes( item['z']['primitive'] ) ) {
-                   messages.push( `${s}.z.primitive: ${item['z']['primitive']}` )
+                   messages.push( `${s}.z.primitive: ${item['z']['primitive']} is not known. Choose from ${primitives.map( a => a[ 0 ]).join(', ')} instead.` )
                 }
                 const list = options.map( ( a ) => a[ 1 ] )
+
                 item['z']['options']
                     .forEach( ( option, rindex ) => {
                         const ss = `${s}.z.options[${rindex}]`
@@ -341,7 +348,7 @@ class Validation {
                 const id = `${routeName}.modifiers.[${index}]`
                 const { types: { modifiers: modifierTypes } } = Validation.getTypes()
                 const { status: s3, messages: m3 } = Validation
-                    .#testObject( { object: item, types: modifierTypes } )
+                    .#testObject( { object: item, types: modifierTypes, id, strict: true } )
                 messages.push( ...m3 )
                 if( !s3 ) { return messages }
                 const { enums: { phases } } = Validation.getTypes()
@@ -397,10 +404,14 @@ class Validation {
                         if( !one && !two ) {
                             messages.push( `${id}: Unknown parameter ${key}` )
                         }
+
+                        if( !item[ key ] ) {
+                            messages.push( `${id}: Missing value for ${key}. key "${key}" is value of "${item[key]}"` )
+                        }
                     } )
 
-                const { types: { tests } } = Validation.getTypes()
-                const availableKeys = tests.map( ( a ) => a[ 0 ] )
+                const { types: { tests: _tests } } = Validation.getTypes()
+                const availableKeys = _tests.map( ( a ) => a[ 0 ] )
                 metaKeys
                     .forEach( ( key ) => {
                         if( !availableKeys.includes( key ) ) {
@@ -414,44 +425,54 @@ class Validation {
 
 
 
-    static #testObject( { object, types, strict=true } ) {
+    static #testObject( { object, types, id='', strict=true } ) {
         const struct = {
             'status': false,
             'messages': []
         }
 
-        const k = types.map( a => a[ 0 ] )
+        const requiredKeys = types.map( a => a[ 0 ] )
+        requiredKeys
+            .forEach( ( key ) => {
+                if( !Object.hasOwn( object, key ) ) {
+                    struct['messages'].push( `${id}: Missing required key: ${key}` )
+                }
+            }
+        )
+        if( struct['messages'].length > 0 ) { return struct }
+
         Object
             .entries( object )
             .forEach( ( [ key, value ] ) => {
                 if( strict ) {
-                    if( !k.includes( key ) ) {
-                        struct['messages'].push( `Unknown key: ${key}` )
+                    if( !requiredKeys.includes( key ) ) {
+                        struct['messages'].push( `${id}: Unknown key: ${key}` )
                         return false
                     }
                 }
 
                 const typeIndex = types.findIndex( ( [ k ] ) => k === key )
                 if( typeIndex === -1 ) {
-                    struct['messages'].push( `Unknown key no type found: ${key}` )
+                    struct['messages'].push( `${id}: Unknown key no type found: ${key}` )
                     return false
                 }
                 const expectedType = types[ typeIndex ][ 1 ]
                 const { status, messages: m1 } =  Validation
-                    .#validateValue( { key, value, expectedType } )
+                    .#validateValue( { key, value, expectedType, id } )
                 struct['messages'].push( ...m1 )
             } )
+
         struct['status'] = struct['messages'].length === 0
 
         return struct
     }
 
 
-    static #validateValue( { key, value, expectedType } ) {
+    static #validateValue( { key, value, expectedType, id } ) {
         if( !value ) {
             return {
                 status: false,
-                messages: [ `Value for ${key} is undefined` ]
+                messages: [ `${id}: Value for ${key} is undefined` ]
             }
         }
 
@@ -459,59 +480,59 @@ class Validation {
         switch( expectedType ) {
             case 'string':
                 if( typeof value !== 'string' ) {
-                    messages.push( `Expected ${key} to be a string` )
+                    messages.push( `${id}: Expected ${key} to be a string` )
                 }
                 break
             case 'arrayOfStrings':
                 if( !Array.isArray( value ) ) {
-                    messages.push( `Expected ${key} to be an array` )
+                    messages.push( `${id}: Expected ${key} to be an array` )
                 } else {
                     value.forEach( ( v ) => {
                         if( typeof v !== 'string' ) {
-                            messages.push( `Expected ${key} to be an array of strings` )
+                            messages.push( `${id}: Expected ${key} to be an array of strings` )
                         }
                     } )
                 }
                 break
             case 'arrayOfObjects':
                 if( !Array.isArray( value ) ) {
-                    messages.push( `Expected ${key} to be an array` )
+                    messages.push( `${id}: Expected ${key} to be an array` )
                 } else {
                     value.forEach( ( v ) => {
                         if( typeof v !== 'object' || Array.isArray( v ) ) {
-                            messages.push( `Expected ${key} to be an array of objects` )
+                            messages.push( `${id}: Expected ${key} to be an array of objects` )
                         }
                     } )
                 }
                 break
             case 'arrayOfArray':
                 if( !Array.isArray( value ) ) {
-                    messages.push( `Expected ${key} to be an array` )
+                    messages.push( `${id}: Expected ${key} to be an array` )
                 } else {
                     value.forEach( ( v ) => {
                         if( !Array.isArray( v ) ) {
-                            messages.push( `Expected ${key} to be an array of arrays` )
+                            messages.push( `${id}: Expected ${key} to be an array of arrays` )
                         }
                     } )
                 }
                 break
             case 'objectKeyValues':
                 if( typeof value !== 'object' || Array.isArray( value ) ) {
-                    messages.push( `Expected ${key} to be an object` )
+                    messages.push( `${id}: Expected ${key} to be an object` )
                 }
                 break
             case 'objectOfObjects':
                 if( typeof value !== 'object' || Array.isArray( value ) ) {
-                    messages.push( `Expected ${key} to be an object` )
+                    messages.push( `${id}: Expected ${key} to be an object` )
                 }
                 break
             case 'objectKeyFunctions':
                 if( typeof value !== 'object' || Array.isArray( value ) ) {
-                    messages.push( `Expected ${key} to be an object` )
+                    messages.push( `${id}: Expected ${key} to be an object` )
                 }
                 break
             default:
-                messages.push( `Unknown type: ${expectedType}` )
+                messages.push( `${id}: Unknown type: ${expectedType}` )
         }
 
         if( messages.length > 0 ) {
@@ -574,10 +595,19 @@ class Validation {
                 return acc
             }, { 'requiredFromHeaders': new Set() } )
 
+        const { root } = schema
+        const matches = [ ...root.matchAll( /{{(.*?)}}/g ) ]
+        const { requiredFromUrl } = matches
+            .reduce( ( acc, param ) => {
+                acc['requiredFromUrl'].add( param[ 1 ]  )
+                return acc
+            },  { 'requiredFromUrl': new Set() } )
+    
         const allowedServerParams = Array
             .from( new Set( [
                 ...requiredFromParameters, 
-                ...requiredFromHeaders
+                ...requiredFromHeaders,
+                ...requiredFromUrl
             ] ) )
             .sort( ( a, b ) => a.localeCompare( b ) )
 
