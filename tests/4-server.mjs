@@ -12,7 +12,7 @@ const server = new McpServer( {
 } )
 
 const path = './../../../.env'
-const { schema } = await import( 'flowmcp-schemas/schemas/etherscan/schema.mjs' )
+const { schema } = await import( './../schemas/v1.2.0/etherscan-io/getContractMultichain.mjs' )
 const { serverParams } = getServerParams( { path, schema } )
 FlowMCP.activateServerTools( { server, schema, serverParams } )
 
@@ -20,8 +20,8 @@ FlowMCP.activateServerTools( { server, schema, serverParams } )
 async function startServer() {
     const transport = new StdioServerTransport()
     try {
-        await server.connect(transport)
-    } catch (err) {
+        await server.connect( transport )
+    } catch( err ) {
         console.error( 'Failed to start server:', err )
     }
 }

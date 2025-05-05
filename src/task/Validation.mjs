@@ -4,11 +4,15 @@ import { z } from 'zod'
 class Validation {
     static getTypes() {
         const types = {
+            'version': '1.2',
             'types': {
                 'meta': [
+                    [ 'namespace',            'string'              ],
                     [ 'name',                 'string'              ],
                     [ 'description',          'string'              ],
-                    [ 'version',              'string'              ],
+                    [ 'docs',                 'arrayOfStrings'      ],
+                    [ 'tags',                 'arrayOfStrings'      ],
+                    // [ 'version',              'string'              ],
                     [ 'flowMCP',              'string'              ],
                     [ 'root',                 'string'              ],
                     [ 'requiredServerParams', 'arrayOfStrings'      ],
@@ -53,14 +57,15 @@ class Validation {
                     [ 'string()',    z.string()     ],
                     [ 'number()',    z.number()     ],
                     [ 'boolean()',   z.boolean()    ],
-                    [ 'object()',    z.object( {} ) ],
+                    [ 'object()',    z.object()     ],
+                    [ 'enum(',       null           ],
                     [ 'array()',     z.array( z.string() ) ],
                 ],
                 'options': [
                     [ 'min(',      'min',      'float'   ],
                     [ 'max(',      'max',      'float'   ],
                     [ 'length(',   'length',   'int'     ],
-                    [ 'enum(',     'enum',     'string'  ],
+                    // [ 'enum(',     'enum',     'string'  ],
                     [ 'regex(',    'regex',    'string'  ],
                     [ 'optional(', 'optional', 'empty'   ],
                     [ 'default(',  'default',  'string'  ]
@@ -75,39 +80,57 @@ class Validation {
     }
 
 
-    static schema( { schema } ) {
-        const id = 'schema'
+    static schema( { schema, strict=true } ) {
+        let id = 'schema'
         const struct = {
             'status': false,
             'messages': []
         }
 
         const { 
+            version: flowMcpVersion,
             types: {
                 meta: metaTypes,
             }
         } = Validation.getTypes()
 
+        if( !schema ) {
+            struct['messages'].push( `${id}: Missing schema` )
+        } else if( typeof schema !== 'object' ) {
+            struct['messages'].push( `${id}: schema must be an object` )
+        }
+        struct['status'] = struct['messages'].length === 0
+        strict ? Validation.#error( struct ) : ''
+        if( !struct['status'] ) { return struct }
+
         const { status: s1, messages: m1 } = Validation
             .#testObject( {  object: schema, types: metaTypes, id } )
-        Validation.#error( { status: s1, messages: m1 } )
+        strict ? Validation.#error( { status: s1, messages: m1 } ) : ''
+        if( !s1 ) { return { status: s1, messages: m1 } }
+
+        const { namespace } = schema
+        if( namespace == '' ) {
+            struct['messages'].push( `${id}.namespace: Namespace is empty` )
+        } else if( !/^[a-zA-Z]+$/.test( id ) ) {
+            struct['messages'].push( `${id}.namespace: Namespace "${namespace}" is not valid. Must be a string with only letters` )
+        } else {
+            id = `Schema.${namespace}`
+        }
 
         const isValidVersion = ( str ) => /^\d+\.\d+\.\d+$/.test( str )
-        const { version } = schema
-        if( !isValidVersion( version ) ) {
-            struct['messages'].push( `Version ${version} is not valid. Must be in the format x.x.x` )
-        }
         const { flowMCP } = schema
         if( !isValidVersion( flowMCP ) ) {
-            struct['messages'].push( `FlowMCP ${flowMCP} is not valid. Must be in the format x.x.x` )
+            struct['messages'].push( `${id}.flowMCP: ${flowMCP} is not valid. Must be in the format x.x.x` )
+        } else if( !flowMCP.startsWith( flowMcpVersion ) ) {
+            struct['messages'].push( `${id}.flowMCP: ${flowMCP} is not compatible with ${flowMcpVersion}.` )
         }
 
         const { root } = schema
-        const isValidUrl = str => {
+        const isValidUrl = ( str ) => {
             try { new URL( str ); return true } catch { return false }
         }
         if( !isValidUrl( root ) ) {
-            struct['messages'].push( `Root ${root} is not valid. Must be a valid URL` )
+            struct['messages'].push( `${id}.root: ${root} is not valid. Must be a valid URL` )
         }
 
         const { status: s2, messages: m2 } = Object
@@ -120,7 +143,27 @@ class Validation {
         struct['messages'].push( ...m2 )
 
         struct['status'] = struct['messages'].length === 0
-        Validation.#error( struct )
+        strict ? Validation.#error( struct ) : ''
+        if( !struct['status'] ) { return struct }
+
+        const { tags } = schema
+        tags
+            .map( ( tag, index ) => {
+                if( typeof tag !== 'string' ) {
+                    struct['messages'].push( `${id}.tags[${index}]: ${tag} is not valid. Must be a string` )
+                    return false
+                } else if( !/^[A-Za-z]+(\.(!)?[A-Za-z]+)?$/.test( tag ) ) {
+                    struct['messages'].push( `${id}.tags[${index}]: ${tag} is not valid. Must be a string with only letters and dots` )
+                    return false
+                }
+                const [ tagName, routeName ] = tag.split( '.' )
+                if( !routeName ) { return true }
+                const routeNames = Object
+                    .keys( schema['routes'] )
+                if( routeNames.findIndex( ( a ) => a === routeName.replace('!', '' ) ) === -1 ) {
+                    struct['messages'].push( `${id}.tags[${index}]: ${tag} is not valid. "${routeName}" is not a valid routeName. Choose from ${routeNames.join(', ')}` )
+                }
+            } )
 
         const { requiredServerParams: schemaServerParams } = schema
         const { allowedServerParams } = Validation
@@ -129,21 +172,22 @@ class Validation {
             .forEach( ( param ) => {
                 const test = schemaServerParams.findIndex( ( a ) => a === param )
                 if( test === -1 ) {
-                    struct['messages'].push( `requiredServerParams: Required "${param}" serverParam is missing.` )
+                    struct['messages'].push( `${id}.requiredServerParams: Required "${param}" serverParam is missing.` )
                 }
             } )
         schemaServerParams
             .forEach( ( param ) => {
                 const test = allowedServerParams.findIndex( ( a ) => a === param )
                 if( test === -1 ) {
-                    struct['messages'].push( `requiredServerParams: Unknown "${param}" serverParam. Expected params are ${allowedServerParams.join( ', ')}` )
+                    struct['messages'].push( `${id}.requiredServerParams: Unknown "${param}" serverParam. Expected params are ${allowedServerParams.join( ', ')}` )
                 }
             } )
 
         struct['status'] = struct['messages'].length === 0
-        Validation.#error( struct )
+        strict ? Validation.#error( struct ) : ''
+        if( !struct['status'] ) { return struct }
 
-        return true
+        return struct
     }
 
 
@@ -185,6 +229,7 @@ class Validation {
         } else if( typeof serverParams !== 'object' ) {
             messages.push( `${id}: serverParams must be an object` )
         }
+
         if( messages.length > 0 ) {
             Validation.#error( { status: false, messages } )
             return false
@@ -206,6 +251,14 @@ class Validation {
                 const test = allowedServerParams.findIndex( ( a ) => a === param )
                 if( test === -1 ) {
                     messages.push( `${id}: Unknown serverParam "${param}". Expected params are ${allowedServerParams.join( ', ')}` )
+                }
+            } )
+
+        Object
+            .entries( serverParams )
+            .forEach( ( [ key, value ] ) => {
+                if( !value ) {
+                    messages.push( `${id}: Value for ${key} is undefined` )
                 }
             } )
 
@@ -255,8 +308,6 @@ class Validation {
 
 
     static #route( { routeName, schema, id='' } ) {
-
-
         const routeObj = schema['routes'][ routeName ]
         id = `${id}.${routeName}`
         const messages = []
@@ -297,7 +348,7 @@ class Validation {
 
                 const { enums: { primitives, options } } = Validation.getTypes()
 
-                if( !primitives.map( a => a[ 0 ] ).includes( item['z']['primitive'] ) ) {
+                if( !primitives.map( a => item['z']['primitive'].startsWith( a[ 0 ] ) ).some( a => a ) ) {
                    messages.push( `${s}.z.primitive: ${item['z']['primitive']} is not known. Choose from ${primitives.map( a => a[ 0 ]).join(', ')} instead.` )
                 }
                 const list = options.map( ( a ) => a[ 1 ] )

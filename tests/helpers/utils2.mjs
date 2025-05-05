@@ -3,11 +3,13 @@ import path from 'path';
 
 
 function getAllFiles({ dirPath, arrayOfFiles = [] }) {
+console.log( 'dirPath', dirPath )
     const files = fs.readdirSync( dirPath )
 
     files
         .forEach( ( file ) => {
             const fullPath = path.join( dirPath, file )
+console.warn( 'fullPath', fullPath )
             if( fs.statSync( fullPath ).isDirectory() ) {
                 getAllFiles( { dirPath: fullPath, arrayOfFiles } )
             } else {

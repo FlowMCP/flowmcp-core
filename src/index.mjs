@@ -1,33 +1,87 @@
 import { Interface } from './task/Interface.mjs'
 import { Validation } from "./task/Validation.mjs"
-import { Test } from "./task/Test.mjs"
 import { Fetch } from "./task/Fetch.mjs"
+import { Server } from './helpers/Server2.mjs'
+import { Test } from './task/Test.mjs'
 
 
 class FlowMCP {
-    static activateServerTools( { server, schema, serverParams, include=[], exclude=[], validate=true } ) {
+    static activateServerTools( { server, schema, serverParams, activateTags=[], validate=true, silent=true } ) {
         if( validate ) {
             Validation.schema( { schema } )
             Validation.serverParams( { schema, serverParams } )
         }
 
         const { routes } = schema
-        const results = Object
+        let routeNames = Object
             .keys( routes )
-            .filter( ( routeName ) => {
-                if( include.length > 0 ) {
-                    return include.includes( routeName )
-                } else if( exclude.length > 0 ) {
-                    return !exclude.includes( routeName )
-                } else {
-                    return true
-                }
-            } )
+
+        if( activateTags.length > 0 ) {
+            const { tags } = schema
+            const _tags = tags
+                .map( tag => tag.toLowerCase().split( '.' )[ 0 ].toLowerCase() )
+            const _activateTags = activateTags
+                .map( tag => tag.toLowerCase().split( '.' )[ 0 ].toLowerCase() )
+            if( tags.length === 0 ) { return [] }
+            const set1 = new Set( _tags )
+            const hasMatch = _activateTags.some(item => set1.has(item) )
+            if( !hasMatch ) { return [] }
+
+            const { includeRouteName, excludeRouteName } = tags
+                .filter( ( tag ) => tag.includes( '.' ) )
+                .filter( ( tag ) => _activateTags.includes( tag.split( '.' )[ 0 ] ) )
+                .reduce( ( acc, tag ) => {
+                    const [ tagName, routeNameCmd] = tag.split( '.' )
+                    if( routeNameCmd.startsWith( '!' ) ) {
+                        const routeName = routeNameCmd.substring( 1 )
+                        acc.excludeRouteName.push( routeName )
+                    } else {
+                        acc.includeRouteName.push( routeNameCmd )
+                    }
+                    return acc
+                }, { includeRouteName: [], excludeRouteName: [] } )
+            routeNames = routeNames
+                .filter( ( routeName ) => {
+                    if( includeRouteName.length > 0 ) {
+                        return includeRouteName.includes( routeName )
+                    } else if( excludeRouteName.length > 0 ) {
+                        return !excludeRouteName.includes( routeName )
+                    } else {
+                        return true
+                    }
+                } )
+
+        }
+
+        const results = routeNames
             .map( ( routeName ) => {
                 const status = FlowMCP
                     .activateServerTool( { server, schema, serverParams, routeName, 'validate': false } )
                 return { routeName, status }
             } )
+
+        if( !silent && routeNames.length > 0 ) {
+            const colWidths = [ 16, 3, 50 ]
+            const id = schema.namespace;
+            const anzahl = routeNames.length;
+            const routes = routeNames.join(', ');
+            
+            const formatCell = ( value, width ) => {
+                const str = String( value )
+                if( str.length > width ) {
+                    return str.substring(0, width - 3) + '...'
+                }
+                return str.padEnd( width )
+            }
+            
+            const row = [
+                formatCell( id, colWidths[ 0 ] ),
+                formatCell( anzahl, colWidths[ 1 ] ),
+                formatCell( routes, colWidths[ 2 ] )
+            ].join( " | " )
+
+            console.warn( row )
+        }
 
         return results
     }
@@ -56,9 +110,9 @@ class FlowMCP {
             description,
             zod,
             'func': async( userParams ) => {
-                const { status, messages, data, dataAsString } = await Fetch
+                const { struct, payload } = await Fetch
                     .from( { schema, userParams, serverParams, routeName } )
-
+                const { status, messages, dataAsString } = struct
                 if( !status ) {
                     return { content: [ { type: "text", text: `Error: ${messages.join( ', ' )}` } ] }
                 } else {
@@ -87,6 +141,16 @@ class FlowMCP {
     }
 
 
+
+    static validateSchema( { schema } ) {
+        const result = Validation
+            .schema( { schema, 'strict': false } )
+
+        return result
+    }
+
+
+
     static async fetch( { schema, userParams, serverParams, routeName } ) {
         Validation.schema( { schema } )
         Validation.serverParams( { schema, serverParams } )
@@ -100,5 +164,4 @@ class FlowMCP {
 }
 
 
-
-export { FlowMCP, Validation }
+export { FlowMCP, Validation, Server }

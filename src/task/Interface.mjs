@@ -1,4 +1,5 @@
 import { Validation } from './Validation.mjs'
+import { z } from 'zod'
 
 
 class Interface {
@@ -6,9 +7,10 @@ class Interface {
         const { routes } = schema
         const zodSchemas = Object
             .entries( routes )
-            .reduce( ( acc, [ key, value ] ) => {
-                acc[ key ] = Interface
-                    .toServerTool( { key, value } )
+            .reduce( ( acc, [ routeName, _ ] ) => {
+                acc[ routeName ] = Interface
+                    .toServerTool( { schema, routeName } )
+                    // .toServerTool( { key, value } )
                 return acc
             }, {} )
 
@@ -17,11 +19,22 @@ class Interface {
 
 
     static toServerTool( { schema, routeName } ) {
+        const { namespace } = schema
         const routeValue = schema['routes'][ routeName ]
 
-        const toolName = routeName
+        const routeNameSnakeCase = routeName
             .replace( /([a-z0-9])([A-Z])/g, '$1_$2' )
             .toLowerCase()
+        const suffixSnakeCase = namespace
+            .replace( /([a-z0-9])([A-Z])/g, '$1_$2' )
+            .toLowerCase()
+        let toolName = `${routeNameSnakeCase}_${suffixSnakeCase}`
+        toolName = toolName
+            .substring( 0, 63 )
+            .replaceAll( ':', '' )
+            .replaceAll( '-', '_' )
+            .replaceAll( '/', '_' )
+
         const { description } = routeValue
         const zod = Interface
             .getZodSchema( { route: routeValue, key: routeName } )
@@ -55,9 +68,37 @@ class Interface {
 
 
     static #insertPrimitive( { primitive } ) {
-        const item = Validation.getTypes()['enums']['primitives']
-            .find( ( [ type ] ) => type === primitive )
-        return item[ 1 ]
+        function getContent( { str } ) {
+            const start = str.indexOf( '(' )
+            const end = str.lastIndexOf( ')' )
+            let content = null
+
+            if( start === -1 || end === -1 || end <= start ) {
+                return { content }
+            }
+            content = str.slice( start + 1, end )
+          
+            return { content }
+        }
+          
+
+        let [ primitiveName, zodPrimitive ]= Validation.getTypes()['enums']['primitives']
+            .find( ( [ type, _ ] ) => primitive.startsWith( type ) )
+
+        if( primitiveName.startsWith( 'enum' ) ) {
+            // finde erstes ( von dort bis zum letzten )
+
+            const { content } = getContent( { str: primitive } )
+            if( content === null ) {
+                throw new Error( `Invalid enum type: ${primitiveName}` )
+            }
+            const values = content
+                .split( ',' )
+                .map( ( item ) => item.trim() )
+            zodPrimitive = z.enum( values )
+        }
+
+        return zodPrimitive
     }
 
 
@@ -116,6 +157,7 @@ class Interface {
                 _interface = _interface.length( value )
                 break
             case 'enum':
+                console.log( '_interface', _interface )
                 _interface = _interface.enum( value )
                 break
             case 'regex':

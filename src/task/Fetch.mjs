@@ -219,7 +219,7 @@ class Fetch {
         for( const { phase, func } of modifiers ) {
             if( phase !== phaseType ) { continue }
             try {
-                const { struct: _struct, payload: _payload } = await func( { struct, payload, userParams, routeName, 'phase': phaseType } )
+                const { struct: _struct, payload: _payload } = await func( { struct, payload, userParams, routeName, phaseType } )
                 struct = _struct
                 payload = _payload
             } catch( e ) {

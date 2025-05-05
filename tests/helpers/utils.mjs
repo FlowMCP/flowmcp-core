@@ -15,11 +15,21 @@ function getEnv( { path, selection } ) {
         .readFileSync( path, 'utf-8' )
         .split( "\n" )
         .map( line => line.split( '=' ) )
-        .reduce( ( acc, [ k, v ], i ) => {
+        .reduce( ( acc, [ k, v ] ) => {
             const find = selection.find( ( [ key, value ] ) => value === k )
-            if( find ) { acc[ find[ 0 ] ] = v }
+            if( find ) { 
+                acc[ find[ 0 ] ] = v 
+            }
             return acc
         }, {} )
+
+    selection
+        .forEach( ( row ) => {
+            const [ key, _ ] = row
+            if( !result[ key ]  ) { console.log( `Missing ${key} in .env file` ) } 
+            return true
+        } )
+
     return result
 }
 
