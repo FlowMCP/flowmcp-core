@@ -87,7 +87,7 @@ Each route can include test cases for verification:
 tests: [
     { _description: "Basic pool stats test", token: "...", pool: "..." }
 ]
-```
+````
 
 ---
 
@@ -168,6 +168,22 @@ handlers: {
 * Arrays like `tests`, `parameters`, and `modifiers` should be one-liners per entry
 * Schema exports should follow after two empty lines
 * Any helper constants must be declared above `const schema`
+
+---
+
+## 📂 Schema Repository (External)
+
+For a full collection of pre-built and community-maintained schemas, visit the [FlowMCP Schema Library](https://github.com/a6b8/flowMCP-schemas).
+
+It contains over **300 MCP-compatible routes** from popular providers such as:
+
+* `moralis` (67 routes)
+* `coingecko` (22 routes)
+* `luksoNetwork` (50 routes)
+* `solanatracker` (39 routes)
+* `chainlink`, `etherscan`, `dexscreener`, and more...
+
+Each schema follows the FlowMCP format and can be directly activated using the included startup script.
 
 ---
 
