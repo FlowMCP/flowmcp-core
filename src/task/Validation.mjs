@@ -456,7 +456,7 @@ class Validation {
                             messages.push( `${id}: Unknown parameter ${key}` )
                         }
 
-                        if( !item[ key ] ) {
+                        if( item[ key ] === undefined || item[ key ] === null ) {
                             messages.push( `${id}: Missing value for ${key}. key "${key}" is value of "${item[key]}"` )
                         }
                     } )
