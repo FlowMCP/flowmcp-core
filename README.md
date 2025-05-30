@@ -1,192 +1,226 @@
 # FlowMCP
 
-**FlowMCP** is a framework designed to adapt and expose existing web APIs (e.g., REST interfaces) through a standardized Model Context Protocol (MCP) interface. It allows APIs to be consumed by AI systems in a structured, testable, and semantically consistent way.
+**FlowMCP** is a schema-based framework that bridges existing web APIs (e.g., REST or GraphQL) with AI systems. It standardizes interaction using a universal format called the **Model Context Protocol (MCP)**.
 
 ---
 
 ## ✨ Purpose
 
-FlowMCP abstracts complex APIs into structured, AI-friendly schema definitions. These definitions help streamline communication between external data sources and AI interfaces.
+FlowMCP abstracts complex APIs into clean, structured schema definitions, enabling seamless AI-driven communication with external services. These schemas eliminate ambiguity and ensure compatibility through versioned contracts.
 
 ---
 
 ## 🔧 Core Features
 
-* **Schema-Based Integration**: Each API route is described with a schema, including parameters optimized for AI understanding.
-* **Modifiers (Pre/Post Processing)**: Adjust query execution or results for normalization and formatting.
-* **Automated Testing**: Built-in test cases ensure routes function as expected.
-* **Text-Based Output**: Results are returned as human-readable text with detailed error messages if needed.
+* **Schema-Based Integration** – Each route is described in a structured schema that AI systems can interpret.
+* **Modifier System** – Pre-, post-, and execute-phase handlers enable transformation and logic injection.
+* **Inline Parameters with Zod Validation** – Parameters use inline formatting with built-in type enforcement.
+* **Test Coverage** – Each route supports embedded test cases to verify real-world API interactions.
+* **Text-Based Output** – Results are returned in clear, human-readable format.
 
 ---
 
-## 📐 Schema Structure
+## 📐 Schema Format
 
-Each schema is stored in a `.mjs` file with a `const schema = { ... }` declaration and contains the following keys:
+Each schema must export a single `const schema = {}` object from a `.mjs` file with the following keys:
 
-| Key                    | Description                                                      |
-| ---------------------- | ---------------------------------------------------------------- |
-| `namespace`            | Unique identifier (max 24 chars, alphanumeric only)              |
-| `name`                 | Display name of the schema                                       |
-| `description`          | Summary of what the schema provides                              |
-| `docs`                 | List of API documentation URLs                                   |
-| `tags`                 | Tags for logical grouping and filtering (standard or query tags) |
-| `flowMCP`              | Compatible version (e.g., `"1.2.0"`)                             |
-| `root`                 | Base URL of the API                                              |
-| `requiredServerParams` | Environment variables required (e.g., API keys)                  |
-| `headers`              | HTTP headers including variable placeholders                     |
-| `routes`               | Route definitions                                                |
-| `handlers`             | Async functions for route modifiers                              |
+| Key                    | Description                                                                 |
+|------------------------|-----------------------------------------------------------------------------|
+| `namespace`            | Short unique name using only ASCII letters (`/^[a-zA-Z]+$/`)                |
+| `name`                 | Human-readable display name                                                 |
+| `description`          | Summary of schema functionality                                             |
+| `docs`                 | List of reference documentation URLs                                        |
+| `tags`                 | Array of activation tags (e.g., `group.route`, `group.!route`)              |
+| `flowMCP`              | Version string (`"1.2.0"` or `"1.2.2"`)                                     |
+| `root`                 | API root URL, can include variable placeholders                             |
+| `requiredServerParams` | Environment variables used in headers, root, or parameters                  |
+| `headers`              | Key-value HTTP headers with optional variable substitution (`{{...}}`)      |
+| `routes`               | API route definitions                                                       |
+| `handlers`             | Async modifier functions for preprocessing or response handling             |
 
 ---
 
-## 🔄 Route Definition
+## 🧭 Route Definition
 
-Each route defines an API call with parameters, descriptions, and optional modifiers:
+Each route under `routes` must define:
 
 * `requestMethod`: `"GET"` or `"POST"`
-* `description`: Explains the route's purpose
-* `route`: The path (e.g., `/account/:id`) with optional dynamic inserts
-* `parameters`: Required and optional inputs
-* `tests`: Predefined test cases
-* `modifiers`: Optional functions to run in phases:
-
-  * `"pre"`: Before the request is sent
-  * `"post"`: After data is received
-  * `"execute"`: Fully custom execution, overrides default request
+* `description`: Summary of the endpoint
+* `route`: URL path with optional placeholders (e.g., `/item/:id`)
+* `parameters`: Input list, defined inline
+* `tests`: Array of input samples with `_description`
+* `modifiers`: Optional array with `phase` and `handlerName`
 
 ---
 
-## 🔍 Parameters
+## 🧩 Parameter Format (1.2.2-compliant)
 
-Parameters are defined with:
+Each parameter entry must be **single-line**, following this exact layout:
 
-* `key`: Parameter name
-* `value`: Static, environment (`{{ENV_VAR}}`), or user input (`{{USER_PARAM}}`)
-* `location`: Where the parameter is used (`insert`, `query`, `body`)
-* `z`: Input validation using [Zod](https://zod.dev) types
+```javascript
+{ position: { key: "id", value: "{{USER_PARAM}}", location: "insert" }, z: { primitive: "string()", options: ["length(24)"] } }
+````
 
-### Zod Primitives
+### Accepted `z.primitive` values:
 
 * `string()`
 * `number()`
 * `boolean()`
-* `enum(val1,val2,...)`
+* `enum(...)`
 
-### Zod Options
+### Accepted `z.options` values:
 
-* `min(n)`, `max(n)`, `length(n)`
-* `optional()`, `default(value)`, `regex(r)`
+* `length(n)`
+* `min(n)`, `max(n)`
+* `regex(pattern)`
+* `optional()`
+* `default(value)`
+
+> 🛑 **Multiline parameters are not valid** in version 1.2.2.
 
 ---
 
-## 🧪 Tests
+## 🧪 Test Cases
 
-Each route can include test cases for verification:
+Each route should include:
 
-```js
+```javascript
 tests: [
-    { _description: "Basic pool stats test", token: "...", pool: "..." }
+    { _description: "Sample test", id: "abc123xyz456789def000000" }
 ]
-````
-
----
-
-## ⚙️ Activating a Schema
-
-Schemas can be activated using `FlowMCP.activateServerTools(...)`.
-
-```js
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { FlowMCP } from 'flowMCP'
-import { schema } from './yourSchema.mjs'
-
-const server = new McpServer({
-    name: 'Test Server',
-    description: 'Dev server for testing',
-    version: '1.2.0'
-})
-
-const serverParams = {
-    MY_API_KEY: 'your_api_key_here'
-}
-
-FlowMCP.activateServerTools({ server, schema, serverParams })
-
-const transport = new StdioServerTransport()
-await server.connect(transport)
 ```
 
+* `_description` is required
+* Only declared parameter keys are allowed
+* All fields must match schema structure
+
 ---
 
-## 🧩 Example: Simple API Call
+## 🔁 Modifiers
 
-```js
-const schema = {
-    namespace: "solanatracker",
-    name: "TokenStatsAPI",
-    ...
-    routes: {
-        tokenStatsByPool: {
-            requestMethod: "GET",
-            route: "/stats/:token/:pool",
-            ...
-        }
-    },
-    handlers: {}
-}
-export { schema }
+Use modifiers for pre/post processing or custom execution:
+
+```javascript
+modifiers: [
+    { phase: "pre", handlerName: "prepareQuery" },
+    { phase: "post", handlerName: "transformOutput" },
+    { phase: "execute", handlerName: "customFetcher" }
+]
 ```
 
+* Phases: `"pre"`, `"post"`, `"execute"`
+* Each handler must exist in `handlers` block
+
 ---
 
-## ⚡ Example: Modifier Handler
+## ⚙️ Handlers
 
-```js
+Example handler definition:
+
+```javascript
 handlers: {
-    modifyQuery: async({ struct, payload, userParams, routeName, phaseType }) => {
-        payload.url = payload.url.replace('--placeholder--', userParams.actualValue)
-        return { struct, payload }
+    normalizeResult: async ({ struct, payload }) => {
+        if (!struct.data?.result) {
+            struct.status = false;
+            struct.messages.push("Missing result data");
+        } else {
+            struct.data = struct.data.result;
+        }
+        return { struct, payload };
     }
 }
 ```
 
 ---
 
-## 📚 Additional Features (from `index.mjs`)
+## 🧩 Activation & Server
 
-* `FlowMCP.activateServerTools(...)`: Activates schema tools for the server.
-* `FlowMCP.getAllTests(...)`: Returns all defined tests.
-* `FlowMCP.fetch(...)`: Manually fetch data from a specific route.
-* `FlowMCP.validateSchema(...)`: Validates a schema definition.
+Schemas are activated via FlowMCP server tools:
+
+```javascript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { FlowMCP } from 'flowMCP'
+import { schema } from './schema.mjs'
+
+const server = new McpServer({
+    name: 'Schema Tester',
+    description: 'Local server for schema testing',
+    version: '1.2.2'
+})
+
+FlowMCP.activateServerTools({
+    server,
+    schema,
+    serverParams: { API_KEY: 'abc123' }
+})
+
+await server.connect(new StdioServerTransport())
+```
 
 ---
 
-## 📎 Formatting Guidelines
+## 🧪 FlowMCP Exposed API (index.mjs)
 
-* 4-space indentation
-* Arrays like `tests`, `parameters`, and `modifiers` should be one-liners per entry
-* Schema exports should follow after two empty lines
-* Any helper constants must be declared above `const schema`
+From the root module:
+
+* `FlowMCP.activateServerTools(...)`
+* `FlowMCP.getAllTests(...)`
+* `FlowMCP.fetch(...)`
+* `FlowMCP.validateSchema(...)`
+* `FlowMCP.prepareActivations(...)`
+* `FlowMCP.getArgvParameters(...)`
 
 ---
 
-## 📂 Schema Repository (External)
+## 📎 Formatting Rules
 
-For a full collection of pre-built and community-maintained schemas, visit the [FlowMCP Schema Library](https://github.com/a6b8/flowMCP-schemas).
+* Always use **4-space indentation**
+* Parameters and modifiers must be one-liners
+* Leave **two blank lines** before `export { schema };`
+* Declare constants (e.g. enums, helper mappings) above the schema
 
-It contains over **300 MCP-compatible routes** from popular providers such as:
+---
 
-* `moralis` (67 routes)
-* `coingecko` (22 routes)
-* `luksoNetwork` (50 routes)
-* `solanatracker` (39 routes)
-* `chainlink`, `etherscan`, `dexscreener`, and more...
+## 📚 Schema Library
 
-Each schema follows the FlowMCP format and can be directly activated using the included startup script.
+Explore curated schemas on GitHub: [flowMCP/flowMCP-schemas](https://github.com/flowMCP/flowMCP-schemas)
+
+This community-driven repository contains more than **60+ production-ready FlowMCP schemas** from major data providers like:
+
+* `chainlink`
+* `luksoNetwork`
+* `coingecko`
+* `poap`
+* `solanatracker`
+* `etherscan`, `dexscreener`, `moralis`, and more...
+
+You can import any schema directly into your project as shown:
+
+```js
+import { schema } from './schemas/chainlink/getLatestPrices.mjs'
+```
+
+---
+
+## ⚒️ Schema Generator Tool
+
+Need a new schema? You can generate FlowMCP-compliant schemas automatically using the AI-based generator:
+
+👉 [Open Schema Generator in ChatGPT](https://chatgpt.com/share/6839ea8b-b1a8-800a-a157-44c83ba77625)
+
+Just describe the API behavior in plain English, and the tool will produce a valid `.mjs` schema file ready to use with FlowMCP.
 
 ---
 
 ## 📄 License & Contributions
 
-FlowMCP is open for contributions. Feel free to open issues or submit PRs for enhancements, fixes, or new features.
+Contributions are welcome via PRs. Follow the schema rules strictly and ensure your changes pass FlowMCP validation.
+
+---
+
+## 📌 Version
+
+**This README is written for FlowMCP schema specification version `1.2.2`.**
+
+```
