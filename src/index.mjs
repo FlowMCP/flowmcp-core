@@ -1,11 +1,74 @@
 import { Interface } from './task/Interface.mjs'
-import { Validation } from "./task/Validation.mjs"
-import { Fetch } from "./task/Fetch.mjs"
-import { Server } from './helpers/Server2.mjs'
-import { Test } from './task/Test.mjs'
+import { Validation } from './task/Validation.mjs'
+import { Fetch } from './task/Fetch.mjs'
+import { Payload } from './task/Payload.mjs'
+
+import { LocalServer } from './servers/LocalServer.mjs'
+import { RemoteServer } from './servers/RemoteServer.mjs'
 
 
 class FlowMCP {
+    static getArgvParameters( {
+        argv,
+        includeNamespaces = [],
+        excludeNamespaces = [],
+        activateTags = []
+    } ) {        
+        const result = {
+            'source': 'unknown',
+            includeNamespaces,
+            excludeNamespaces,
+            activateTags
+        }
+        
+        const argMappings = {
+            '--source': 'source',
+            '--includeNamespaces=': 'includeNamespaces',
+            '--excludeNamespaces=': 'excludeNamespaces',
+            '--activateTags=': 'activateTags'
+        }
+        
+        const args = process.argv.slice( 2 )
+        args
+            .forEach( ( arg ) => {
+                Object
+                    .entries( argMappings )
+                    .forEach( ( [ prefix, key ] ) => {
+                        if( arg.startsWith( prefix ) ) {
+                            const [ _, value ] = arg.split( '=' )
+                            result[ key ] = value.split( ',' ).filter( Boolean )
+                        }
+                    } )
+            } )
+
+        if( Array.isArray( result['source'] ) ) {
+            result['source'] = result['source'][ 0 ]
+        }
+
+        return result
+    }
+
+
+
+    static prepareActivations( { 
+        arrayOfSchemas, 
+        envObject, 
+        activateTags=[],
+        includeNamespaces = [],
+        excludeNamespaces = []
+    } ) {
+        Validation.prepareActivations( { arrayOfSchemas, envObject, activateTags, includeNamespaces, excludeNamespaces } )
+
+        const { status, messages, activationPayloads } = Payload
+            .prepareActivation( { arrayOfSchemas, envObject, activateTags } )
+        if( !status ) { 
+            throw new Error( `Activation preparation failed: ${messages.join( ', ' )}` ) 
+        }
+
+        return { activationPayloads }
+    }
+
+
     static activateServerTools( { server, schema, serverParams, activateTags=[], validate=true, silent=true } ) {
         if( validate ) {
             Validation.schema( { schema } )
@@ -141,14 +204,12 @@ class FlowMCP {
     }
 
 
-
     static validateSchema( { schema } ) {
         const result = Validation
             .schema( { schema, 'strict': false } )
 
         return result
     }
-
 
 
     static async fetch( { schema, userParams, serverParams, routeName } ) {
@@ -164,4 +225,4 @@ class FlowMCP {
 }
 
 
-export { FlowMCP, Validation, Server }
+export { FlowMCP, Validation, LocalServer, RemoteServer }

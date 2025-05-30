@@ -80,6 +80,53 @@ class Validation {
     }
 
 
+    static prepareActivations( { arrayOfSchemas, envObject, activateTags, includeNamespaces, excludeNamespaces} ) {
+        const messages = []
+        if( !Array.isArray( arrayOfSchemas ) || arrayOfSchemas.length === 0 ) {
+            messages.push( 'Missing or invalid arrayOfSchemas' )
+        } else if( !arrayOfSchemas.every( ( path ) => typeof path === 'object' ) ) {
+            messages.push( 'arrayOfSchemas must be an array of objects' )
+        }
+
+        if( !envObject || typeof envObject !== 'object' ) {
+            messages.push( 'Missing or invalid envObject' )
+        }
+
+        if( !Array.isArray( activateTags ) ) {
+            messages.push( 'Missing or invalid activateTags' )
+        }
+
+        if( !Array.isArray( includeNamespaces ) ) {
+            messages.push( 'Missing or invalid includeNamespaces' )
+        } else {
+            includeNamespaces
+                .forEach( ( ns, index ) => {
+                    if( typeof ns !== 'string' || ns === '' ) {
+                        messages.push( `includeNamespaces[${index}]: Namespace must be a non-empty string` )
+                    }
+                } )
+        }
+
+        if( !Array.isArray( excludeNamespaces ) ) {
+            messages.push( 'Missing or invalid excludeNamespaces' )
+        } else {
+            excludeNamespaces
+                .forEach( ( ns, index ) => {
+                    if( typeof ns !== 'string' || ns === '' ) {
+                        messages.push( `excludeNamespaces[${index}]: Namespace must be a non-empty string` )
+                    }
+                } )
+        }
+
+        if( messages.length > 0 ) {
+            Validation.#error( { status: false, messages } )
+            return false
+        }
+
+        return true
+    }
+
+
     static schema( { schema, strict=true } ) {
         let id = 'schema'
         const struct = {
@@ -217,7 +264,6 @@ class Validation {
 
         return true
     }
-
 
 
     static serverParams( { schema, serverParams } ) {
@@ -473,7 +519,6 @@ class Validation {
 
         return messages
     }
-
 
 
     static #testObject( { object, types, id='', strict=true } ) {

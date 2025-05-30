@@ -1,19 +1,21 @@
 {
   "name": "flowmcp",
-  "version": "1.2.1",
-  "description": "Declarative REST API routing and validation with schema-based zod integration and test automation.",
+  "version": "1.2.2",
+  "description": "FlowMCP is a framework for adapting existing web APIs into a standardized Model Context Protocol (MCP) interface, enabling structured, testable, and semantically consistent access for AI systems.",
   "main": "./src/index.mjs",
   "directories": {
     "test": "tests"
   },
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "inspector": "npx @modelcontextprotocol/inspector"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/inspector": "^0.13.0",
     "axios": "^1.8.4",
     "flatted": "^3.3.3",
     "zod": "^3.24.2"
@@ -23,6 +25,6 @@
     "@modelcontextprotocol/sdk": "^1.9.0",
     "ccxt": "^4.4.77",
     "ethers": "^6.13.7",
-    "flowmcp-schemas": "github:a6b8/flowMCP-schemas"
+    "schemaImporter": "github:flowmcp/flowMCP-schemas#3c06b47a711f966e88def180e19c418b4e05a03c"
   }
 }
