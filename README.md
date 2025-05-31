@@ -222,5 +222,3 @@ Contributions are welcome via PRs. Follow the schema rules strictly and ensure y
 ## 📌 Version
 
 **This README is written for FlowMCP schema specification version `1.2.2`.**
-
-```
