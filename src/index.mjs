@@ -2,6 +2,7 @@ import { Interface } from './task/Interface.mjs'
 import { Validation } from './task/Validation.mjs'
 import { Fetch } from './task/Fetch.mjs'
 import { Payload } from './task/Payload.mjs'
+import { Test } from './task/Test.mjs'
 
 import { LocalServer } from './servers/LocalServer.mjs'
 import { RemoteServer } from './servers/RemoteServer.mjs'

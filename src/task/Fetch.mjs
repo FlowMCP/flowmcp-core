@@ -6,7 +6,7 @@ import util from 'util'
 
 
 class Fetch {
-    static async from({ schema, userParams, serverParams, routeName }) {
+    static async from({ schema, userParams, serverParams, routeName } ) {
         let struct = {
             status: true,
             messages: [],
@@ -18,7 +18,6 @@ class Fetch {
             .#prepare( { schema, userParams, serverParams, routeName } )
         userParams = { ...userParams, _allParams }
         let payload = { requestMethod, url, headers, body, modifiers }
-
 
         await Validation
             .getTypes()['enums']['phases']

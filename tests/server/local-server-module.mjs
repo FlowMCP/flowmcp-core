@@ -1,8 +1,8 @@
 import fs from 'fs'
 import { SchemaImporter } from 'schemaimporter'
 
-import { FlowMCP } from '../src/index.mjs'
-import { RemoteServer } from '../src/index.mjs'
+import { FlowMCP } from '../../src/index.mjs'
+import { LocalServer } from '../../src/index.mjs'
 
 
 function getEnvObject( { source, envPath } ) {
@@ -26,7 +26,7 @@ function getEnvObject( { source, envPath } ) {
     return { envObject }
 }
 
-
+console.log( 'Starting Local Server...' )
 const schemaFilePaths = await SchemaImporter
     .get( { 
         'onlyWithoutImports': true,
@@ -56,7 +56,8 @@ const { activationPayloads } = FlowMCP
         excludeNamespaces
     } )
 
-const remoteServer = new RemoteServer( { silent: true } )
-remoteServer
-    .addActivationPayloads( { activationPayloads, routePath: '/this', transportProtocols: ['sse'] } )
-await remoteServer.start()
+const localServer = new LocalServer( { silent: true } )
+localServer
+    .addActivationPayloads( { activationPayloads } )
+await localServer.start()
+console.log( 'Local Server started successfully.' )

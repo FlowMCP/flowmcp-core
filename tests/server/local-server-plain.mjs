@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { FlowMCP } from './../src/index.mjs'
+import { FlowMCP } from '../../src/index.mjs'
 
 
 const server = new McpServer( {
@@ -46,3 +46,4 @@ FlowMCP
 
 const transport = new StdioServerTransport()
 server.connect( transport )
+console.log( 'Local Server started and listening for requests.' )

@@ -1,14 +1,14 @@
 import fs from 'fs'
 import { SchemaImporter } from 'schemaimporter'
 
-import { FlowMCP } from '../src/index.mjs'
-import { LocalServer } from '../src/index.mjs'
+import { FlowMCP } from '../../src/index.mjs'
+import { RemoteServer } from '../../src/index.mjs'
 
 
 function getEnvObject( { source, envPath } ) {
     let envObject
 
-    if( source.includes( 'unknown' ) ) {
+    if( source === 'unknown' ) {
         envObject = fs
             .readFileSync( envPath, 'utf-8' )
             .split( '\n' )
@@ -17,7 +17,7 @@ function getEnvObject( { source, envPath } ) {
                 if( key && value ) { acc[ key.trim() ] = value.trim() }
                 return acc
             }, {} )
-    } else if( source.includes( 'claude' ) ) {
+    } else if( source === 'claude' ) {
         envObject = process.env
     } else { 
         console.log( 'Unknown source:', source ) 
@@ -56,8 +56,12 @@ const { activationPayloads } = FlowMCP
         excludeNamespaces
     } )
 
-const localServer = new LocalServer( { silent: true } )
-localServer
-    .addActivationPayloads( { activationPayloads } )
-await localServer.start()
-
+const remoteServer = new RemoteServer( { silent: true } )
+remoteServer
+    .addActivationPayloads( { 
+        activationPayloads, 
+        routePath: '/this', 
+        transportProtocols: [ 'sse' ] 
+    } )
+remoteServer.start()
+console.log( 'Remote Server started successfully.' )
