@@ -49,7 +49,7 @@ Each route under `routes` must define:
 * `route`: URL path with optional placeholders (e.g., `/item/:id`)
 * `parameters`: Input list, defined inline
 * `tests`: Array of input samples with `_description`
-* `modifiers`: Optional array with `phase` and `handlerName`
+* `modifiers`: Required array with `phase` and `handlerName`. If not in use set to []
 
 ---
 

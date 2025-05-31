@@ -23,21 +23,20 @@ const schema = {
     handlers: {}
 };
 
-
 export { schema };
-```
+````
 
 ---
 
 ## 3. General Validation Rules
 
-| Field                  | Requirement                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `namespace`            | Must be non-empty string; letters only (`/^[a-zA-Z]+$/`)                                                     |
-| `flowMCP`              | Must be in `"x.x.x"` format, e.g. `"1.2.0"`                                                                  |
-| `root`                 | Must be a valid URL; placeholders like `{{API_KEY}}` are allowed                                             |
-| `requiredServerParams` | Must include all placeholders used in `root`, `headers`, and `parameters.value` (excluding `{{USER_PARAM}}`) |
-| `tags`                 | Format: `"module.route"` or `"module.!route"` using letters and dots only                                    |
+| Field                    | Requirement                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `namespace`              | Must be non-empty string; letters only (`/^[a-zA-Z]+$/`)                                                     |
+| `flowMCP`                | Must be in `"x.x.x"` format, e.g. `"1.2.0"`                                                                  |
+| `root`                   | Must be a valid URL; placeholders like `{{API_KEY}}` are allowed                                             |
+| `requiredServerParams`   | Must include all placeholders used in `root`, `headers`, and `parameters.value` (excluding `{{USER_PARAM}}`) |
+| `tags`                   | Format: `"module.route"` or `"module.!route"` using letters and dots only                                    |                                                             |
 
 ---
 
@@ -55,6 +54,8 @@ routes: {
     }
 }
 ```
+
+All keys (requestMethod, description, route, parameters, tests and modifiers) MUST be declared. If for example modifiers is not in use, set modifiers to modifiers: []
 
 ---
 
@@ -89,6 +90,7 @@ parameters: [
 ```
 
 > 🔹 Every parameter using `{{USER_PARAM}}` **must** include a valid `z` object with `primitive` and `options`.
+
 
 ---
 
@@ -192,7 +194,6 @@ const schema = {
         }
     }
 };
-
 
 export { schema };
 ```
