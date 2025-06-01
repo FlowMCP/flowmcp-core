@@ -207,7 +207,7 @@ import { schema } from './schemas/chainlink/getLatestPrices.mjs'
 
 Need a new schema? You can generate FlowMCP-compliant schemas automatically using the AI-based generator:
 
-👉 [Open Schema Generator in ChatGPT](https://chatgpt.com/share/6839ea8b-b1a8-800a-a157-44c83ba77625)
+👉 [Open Schema Generator in ChatGPT](https://chatgpt.com/g/g-68066f63ac3c8191aa790ef47f100015-flowmcp-schema-generator-1-2-2)
 
 Just describe the API behavior in plain English, and the tool will produce a valid `.mjs` schema file ready to use with FlowMCP.
 
