@@ -1,4 +1,4 @@
-# FlowMCP
+# FlowMCP (Core)
 
 **FlowMCP** is a schema-based framework that bridges existing web APIs (e.g., REST or GraphQL) with AI systems. It standardizes interaction using a universal format called the **Model Context Protocol (MCP)**.
 
