@@ -4,8 +4,8 @@ import { Fetch } from './task/Fetch.mjs'
 import { Payload } from './task/Payload.mjs'
 import { Test } from './task/Test.mjs'
 
-import { LocalServer } from './servers/LocalServer.mjs'
-import { RemoteServer } from './servers/RemoteServer.mjs'
+// import { LocalServer } from './servers/LocalServer.mjs'
+// import { RemoteServer } from './servers/RemoteServer.mjs'
 
 
 class FlowMCP {
@@ -48,7 +48,6 @@ class FlowMCP {
 
         return result
     }
-
 
 
     static prepareActivations( { 
@@ -117,23 +116,24 @@ class FlowMCP {
 
         }
 
-        const results = routeNames
-            .map( ( routeName ) => {
-                const status = FlowMCP
+        const mcpTools = routeNames
+            .reduce( ( acc, routeName ) => {
+                const { mcpTool } = FlowMCP
                     .activateServerTool( { server, schema, serverParams, routeName, 'validate': false } )
-                return { routeName, status }
+                acc[ routeName ] = mcpTool
+                return acc
             } )
 
         if( !silent && routeNames.length > 0 ) {
             const colWidths = [ 16, 3, 50 ]
-            const id = schema.namespace;
-            const anzahl = routeNames.length;
-            const routes = routeNames.join(', ');
+            const id = schema.namespace
+            const anzahl = routeNames.length
+            const routes = routeNames.join( ', ' )
             
             const formatCell = ( value, width ) => {
                 const str = String( value )
                 if( str.length > width ) {
-                    return str.substring(0, width - 3) + '...'
+                    return str.substring( 0, width - 3 ) + '...'
                 }
                 return str.padEnd( width )
             }
@@ -147,16 +147,16 @@ class FlowMCP {
             console.warn( row )
         }
 
-        return results
+        return mcpTools
     }
 
 
     static activateServerTool( { server, schema, routeName, serverParams, validate=true } ) {
         const { toolName, description, zod, func } = FlowMCP
             .prepareServerTool( { schema, serverParams, routeName, validate } )
-        server.tool( toolName, description, zod, func )
+        const mcpTool = server.tool( toolName, description, zod, func )
 
-        return true
+        return { mcpTool }
     }
 
 
@@ -226,4 +226,4 @@ class FlowMCP {
 }
 
 
-export { FlowMCP, Validation, LocalServer, RemoteServer }
+export { FlowMCP, Validation }
