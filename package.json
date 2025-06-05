@@ -25,4 +25,4 @@
     "schemaImporter": "github:flowmcp/flowMCP-schemas#3d378b3a61452126c833d667a9189ca578813c48", 
     "flowmcp-servers": "github:flowmcp/flowMCP-servers#0eca09d7902f6cb0b120d4d46f8b1455885d82d2"
   }
-}
+} 
