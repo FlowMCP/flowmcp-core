@@ -27,14 +27,14 @@ function getEnvObject( { source, envPath } ) {
 }
 
 console.log( 'Starting Local Server...' )
-const schemaFilePaths = await SchemaImporter
-    .get( { 
-        'onlyWithoutImports': true,
-        'withMetaData': true, 
-        'withSchema': true 
+const arrayOfSchemas = await SchemaImporter
+    .loadFromFolder( {
+        excludeSchemasWithImports: true,
+        excludeSchemasWithRequiredServerParams: false,
+        addAdditionalMetaData: true,
+        outputType: 'onlySchema'
     } )
-const arrayOfSchemas = schemaFilePaths
-    .map( ( { schema } ) => schema )
+
 const { includeNamespaces, excludeNamespaces, activateTags, source } = FlowMCP
     .getArgvParameters( {
         'argv': process.argv,

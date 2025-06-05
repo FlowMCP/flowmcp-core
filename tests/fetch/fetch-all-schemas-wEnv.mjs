@@ -30,10 +30,11 @@ function getServerParams( { path, requiredServerParams } ) {
 
 
 const schemas = await SchemaImporter
-    .get( {
-        'onlyWithoutImports': true,
-        'withMetaData': true,
-        'withSchema': true
+    .loadFromFolder( {
+        excludeSchemasWithImports: true,
+        excludeSchemasWithRequiredServerParams: false,
+        addAdditionalMetaData: true,
+        outputType: null
     } )
 
 await schemas

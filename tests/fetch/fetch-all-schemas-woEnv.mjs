@@ -4,18 +4,14 @@ import { Print } from './helpers/Print.mjs'
 
 
 const schemas = await SchemaImporter
-    .get( {
-        'onlyWithoutImports': true,
-        'withMetaData': true,
-        'withSchema': true
-    } )
-const filteredSchemas = schemas
-    .filter( ( { schema } ) => {
-        const { requiredServerParams } = schema
-        return requiredServerParams.length === 0 
+    .loadFromFolder( {
+        excludeSchemasWithImports: true,
+        excludeSchemasWithRequiredServerParams: true,
+        addAdditionalMetaData: true,
+        outputType: null
     } )
 
-await filteredSchemas
+await schemas
     .reduce( ( promise, struct ) => promise.then( async () => {
         const { schema, namespace, fileName } = struct
         Print.log( `\n📦 ${namespace} → ${fileName}` )

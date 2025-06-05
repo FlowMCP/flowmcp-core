@@ -3,10 +3,11 @@ import { SchemaImporter } from 'schemaimporter'
 
 
 const schemas = await SchemaImporter
-    .get( {
-        'onlyWithoutImports': true,
-        'withMetaData': true,
-        'withSchema': true
+    .loadFromFolder( {
+        excludeSchemasWithImports: true,
+        excludeSchemasWithRequiredServerParams: false,
+        addAdditionalMetaData: true,
+        outputType: null
     } )
 
 schemas

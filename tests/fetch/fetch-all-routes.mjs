@@ -2,21 +2,16 @@ import { FlowMCP } from '../../src/index.mjs'
 import { SchemaImporter } from 'schemaimporter'
 import { Print } from './helpers/Print.mjs'
 
+
 const schemas = await SchemaImporter
-    .get( {
-        'onlyWithoutImports': true,
-        'withMetaData': true,
-        'withSchema': true
-    } )
-const filteredSchemas = schemas
-    .filter( ( { schema } ) => {
-        const { requiredServerParams } = schema
-        return requiredServerParams.length === 0 
+    .loadFromFolder( {
+        excludeSchemasWithImports: true,
+        excludeSchemasWithRequiredServerParams: true,
+        addAdditionalMetaData: true,
+        outputType: null
     } )
 
-const { schema, namespace, fileName } = filteredSchemas[ 0 ]
-const allTests = FlowMCP.getAllTests( { schema } )
-
+const { schema, namespace, fileName } = schemas[ 0 ]
 Print.log( `\n📦 ${namespace} → ${fileName}` )
 await FlowMCP
     .getAllTests( { schema } )
