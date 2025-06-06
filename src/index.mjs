@@ -122,7 +122,7 @@ class FlowMCP {
                     .activateServerTool( { server, schema, serverParams, routeName, 'validate': false } )
                 acc[ routeName ] = mcpTool
                 return acc
-            } )
+            }, {} )
 
         if( !silent && routeNames.length > 0 ) {
             const colWidths = [ 16, 3, 50 ]
