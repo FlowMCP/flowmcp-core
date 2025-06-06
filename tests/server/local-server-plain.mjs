@@ -34,7 +34,7 @@ const schema = {
     handlers: {}
 }
 
-FlowMCP
+const { mcpTool } = FlowMCP
     .activateServerTool( {
         'server': server, 
         schema, 
@@ -43,6 +43,10 @@ FlowMCP
         activateTags: [], 
         'silent': true 
     } )
+// mcpTool.disable()
+// mcpTool.update()
+// mcpTool.enable()
+// mcpTool.remove()
 
 const transport = new StdioServerTransport()
 server.connect( transport )

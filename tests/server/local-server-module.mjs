@@ -2,7 +2,8 @@ import fs from 'fs'
 import { SchemaImporter } from 'schemaimporter'
 
 import { FlowMCP } from '../../src/index.mjs'
-import { LocalServer } from '../../src/index.mjs'
+// import { LocalServer } from '../../src/index.mjs'
+import { LocalServer } from 'flowmcpServers'
 
 
 function getEnvObject( { source, envPath } ) {

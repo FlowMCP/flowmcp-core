@@ -147,7 +147,7 @@ class FlowMCP {
             console.warn( row )
         }
 
-        return mcpTools
+        return { mcpTools }
     }
 
 

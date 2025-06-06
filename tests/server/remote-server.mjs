@@ -2,7 +2,7 @@ import fs from 'fs'
 import { SchemaImporter } from 'schemaimporter'
 
 import { FlowMCP } from '../../src/index.mjs'
-import { RemoteServer } from '../../src/index.mjs'
+import { RemoteServer } from 'flowmcpServers'
 
 
 function getEnvObject( { source, envPath } ) {
@@ -29,7 +29,7 @@ function getEnvObject( { source, envPath } ) {
 
 const arrayOfSchemas = await SchemaImporter
     .loadFromFolder( {
-        excludeSchemasWithImport: true,
+        excludeSchemasWithImports: true,
         excludeSchemasWithRequiredServerParams: false,
         addAdditionalMetaData: true,
         outputType: 'onlySchema'
@@ -56,7 +56,7 @@ const { activationPayloads } = FlowMCP
         excludeNamespaces
     } )
 
-const remoteServer = new RemoteServer( { silent: true } )
+const remoteServer = new RemoteServer( { silent: false } )
 remoteServer
     .addActivationPayloads( { 
         activationPayloads, 
