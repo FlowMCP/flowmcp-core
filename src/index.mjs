@@ -156,7 +156,7 @@ class FlowMCP {
             .prepareServerTool( { schema, serverParams, routeName, validate } )
         const mcpTool = server.tool( toolName, description, zod, func )
 
-        return { toolNane, mcpTool }
+        return { toolName, mcpTool }
     }
 
 
