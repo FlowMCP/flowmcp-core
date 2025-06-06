@@ -118,9 +118,9 @@ class FlowMCP {
 
         const mcpTools = routeNames
             .reduce( ( acc, routeName ) => {
-                const { mcpTool } = FlowMCP
+                const { toolName, mcpTool } = FlowMCP
                     .activateServerTool( { server, schema, serverParams, routeName, 'validate': false } )
-                acc[ routeName ] = mcpTool
+                acc[ toolName ] = mcpTool
                 return acc
             }, {} )
 
@@ -156,7 +156,7 @@ class FlowMCP {
             .prepareServerTool( { schema, serverParams, routeName, validate } )
         const mcpTool = server.tool( toolName, description, zod, func )
 
-        return { mcpTool }
+        return { toolNane, mcpTool }
     }
 
 
