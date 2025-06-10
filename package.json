@@ -1,6 +1,6 @@
 {
   "name": "flowmcp-core",
-  "version": "1.2.6",
+  "version": "1.3.0",
   "description": "FlowMCP is a framework for adapting existing web APIs into a standardized Model Context Protocol (MCP) interface, enabling structured, testable, and semantically consistent access for AI systems.",
   "main": "./src/index.mjs",
   "directories": {
