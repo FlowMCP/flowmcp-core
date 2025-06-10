@@ -48,13 +48,19 @@ const { envObject } = getEnvObject( {
     envPath: './../../.env'
 } )
 
+
+const { filteredArrayOfSchemas } = FlowMCP
+    .filterArrayOfSchemas( {
+        arrayOfSchemas,
+        includeNamespaces,
+        excludeNamespaces,
+        activateTags,
+    } )
+
 const { activationPayloads } = FlowMCP
     .prepareActivations( { 
-        arrayOfSchemas, 
-        envObject, 
-        activateTags,
-        includeNamespaces,
-        excludeNamespaces
+        'arrayOfSchemas': filteredArrayOfSchemas, 
+        envObject
     } )
 
 const localServer = new LocalServer( { silent: true } )

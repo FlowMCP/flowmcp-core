@@ -42,18 +42,24 @@ const { includeNamespaces, excludeNamespaces, activateTags, source } = FlowMCP
         'excludeNamespaces': [],
         'activateTags': [], 
     } )
+
 const { envObject } = getEnvObject( { 
     source,
     envPath: './../../.env'
 } )
 
+const { filteredArrayOfSchemas } = FlowMCP
+    .filterArrayOfSchemas( {
+        arrayOfSchemas,
+        includeNamespaces,
+        excludeNamespaces,
+        activateTags
+    } )
+
 const { activationPayloads } = FlowMCP
     .prepareActivations( { 
-        arrayOfSchemas, 
-        envObject, 
-        activateTags,
-        includeNamespaces,
-        excludeNamespaces
+        'arrayOfSchemas': filteredArrayOfSchemas, 
+        envObject,
     } )
 
 const remoteServer = new RemoteServer( { silent: false } )

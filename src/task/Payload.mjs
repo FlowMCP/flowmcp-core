@@ -1,10 +1,7 @@
 class Payload {
-    static prepareActivation( { 
+    static prepareActivations( { 
         arrayOfSchemas, 
-        envObject, 
-        activateTags,         
-        includeNamespaces = [],
-        excludeNamespaces = [], 
+        envObject
     } ) {
 /*
         const schemasImports = await listOfSchemaPaths
@@ -35,7 +32,7 @@ class Payload {
                 const result = { 'fileName': '', 'path': '', schema, 'messages': [] }
                 return result
             } )
-            .map( ( item ) => { item['activateTags'] = activateTags; return item } ) 
+            // .map( ( item ) => { item['activateTags'] = activateTags; return item } ) 
             .map( ( item ) => {
                 item['serverParams'] = null
                 if( item['messages'].length > 0 ) { return item } 
@@ -49,8 +46,8 @@ class Payload {
 
                 return item
             } )
-            .map( ( { schema, activateTags, serverParams, messages } ) => {
-                return { schema, activateTags, serverParams, messages }
+            .map( ( { schema, serverParams, messages } ) => {
+                return { schema, serverParams, messages }
             } )
 
         const messages = activationPayloads

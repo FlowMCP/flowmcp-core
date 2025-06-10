@@ -92,31 +92,16 @@ class Validation {
             messages.push( 'Missing or invalid envObject' )
         }
 
-        if( !Array.isArray( activateTags ) ) {
-            messages.push( 'Missing or invalid activateTags' )
-        }
-
-        if( !Array.isArray( includeNamespaces ) ) {
-            messages.push( 'Missing or invalid includeNamespaces' )
-        } else {
-            includeNamespaces
-                .forEach( ( ns, index ) => {
-                    if( typeof ns !== 'string' || ns === '' ) {
-                        messages.push( `includeNamespaces[${index}]: Namespace must be a non-empty string` )
-                    }
-                } )
-        }
-
-        if( !Array.isArray( excludeNamespaces ) ) {
-            messages.push( 'Missing or invalid excludeNamespaces' )
-        } else {
-            excludeNamespaces
-                .forEach( ( ns, index ) => {
-                    if( typeof ns !== 'string' || ns === '' ) {
-                        messages.push( `excludeNamespaces[${index}]: Namespace must be a non-empty string` )
-                    }
-                } )
-        }
+        const n = [
+            [ 'includeNamespaces', includeNamespaces ],
+            [ 'excludeNamespaces', excludeNamespaces ],
+            [ 'activateTags',      activateTags      ]
+        ]
+            .forEach( ( [ name, value ] ) => {
+                if( value !== undefined ) {
+                    messages.push( `${name}: Is deprecated use filterArrayOfSchema instead.` )
+                }
+            } )
 
         if( messages.length > 0 ) {
             Validation.#error( { status: false, messages } )
@@ -125,6 +110,37 @@ class Validation {
 
         return true
     }
+
+
+    static filterArrayOfSchemas( { arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags } ) {
+        const messages = []
+        if( !Array.isArray( arrayOfSchemas ) || arrayOfSchemas.length === 0 ) {
+            messages.push( 'Missing or invalid arrayOfSchemas' )
+        } else if( !arrayOfSchemas.every( ( path ) => typeof path === 'object' ) ) {
+            messages.push( 'arrayOfSchemas must be an array of objects' )
+        }
+
+        const n = [
+            [ 'includeNamespaces', includeNamespaces ],
+            [ 'excludeNamespaces', excludeNamespaces ],
+            [ 'activateTags',      activateTags      ]    
+        ]
+            .forEach( ( [ name, value ] ) => {
+                if( !Array.isArray( value ) ) {
+                    messages.push( `${name}: Must be an array` )
+                } else if( value.map( ( a ) => typeof a === 'string' && a !== '' ).some( a => !a ) ) {
+                    messages.push( `${name}: Must be an array of non-empty strings` )
+                }
+            } )
+
+        if( messages.length > 0 ) {
+            Validation.#error( { status: false, messages } )
+            return false
+        }
+
+        return true
+    }
+
 
 
     static schema( { schema, strict=true } ) {

@@ -53,14 +53,14 @@ class FlowMCP {
     static prepareActivations( { 
         arrayOfSchemas, 
         envObject, 
-        activateTags=[],
-        includeNamespaces = [],
-        excludeNamespaces = []
+        activateTags,  // deprecated use filterArrayOfSchemas instead
+        includeNamespaces, // deprecated use filterArrayOfSchemas instead
+        excludeNamespaces // deprecated use filterArrayOfSchemas instead
     } ) {
         Validation.prepareActivations( { arrayOfSchemas, envObject, activateTags, includeNamespaces, excludeNamespaces } )
 
         const { status, messages, activationPayloads } = Payload
-            .prepareActivation( { arrayOfSchemas, envObject, activateTags } )
+            .prepareActivations( { arrayOfSchemas, envObject } )
         if( !status ) { 
             throw new Error( `Activation preparation failed: ${messages.join( ', ' )}` ) 
         }
@@ -69,7 +69,97 @@ class FlowMCP {
     }
 
 
-    static activateServerTools( { server, schema, serverParams, activateTags=[], validate=true, silent=true } ) {
+    static filterArrayOfSchemas( { arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags } ) {
+        Validation.filterArrayOfSchemas( { arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags } )
+
+        const filteredByNamespaces = arrayOfSchemas
+            .filter( ( schema ) => {
+                const { namespace } = schema
+                if( includeNamespaces.length > 0 ) {
+                    return includeNamespaces.includes( namespace )
+                } else if( excludeNamespaces.length > 0 ) {
+                    return !excludeNamespaces.includes( namespace )
+                } else {
+                    return true
+                }
+            } )
+// console.log( 'A', 'Schemas', filteredByNamespaces.length, '                                   Routes', filteredByNamespaces.reduce( (acc, s ) => { acc += Object.keys( s.routes ).length; return acc }, 0 ) )
+
+        const { filterTags, schemaFilters } = activateTags
+            .reduce( ( acc, tag ) => {
+                if( !tag.includes( '.' ) ) {
+                    acc['filterTags' ].push( tag.toLowerCase() )
+                    return acc
+                } else {
+                    const [ namespace, routeNameCmd ] = tag.split( '.' )
+                    if( !Object.hasOwn( acc['schemaFilters'], namespace ) ) {
+                        acc['schemaFilters'][ namespace ] = []
+                    }
+                    acc['schemaFilters'][ namespace ].push( routeNameCmd.toLowerCase() )
+                }
+                return acc
+            }, { 'filterTags': [], 'schemaFilters': {} } )
+// console.log( 'B', 'FilterTags', filterTags.length, 'SchemaFilters', Object.keys( schemaFilters ).length )
+
+        const filteredByNamespaceAndTags = filteredByNamespaces
+            .filter( ( schema ) => {
+                if( filterTags.length === 0 ) { return true }
+                else {
+                    const { tags } = schema
+                    const hasTag = filterTags
+                        .some( tag => tags.map( t => t.toLowerCase() ).includes( tag ) )
+                    return hasTag
+                }
+            } )
+// console.log( 'C', 'FilteredByNamespaceAndTags', filteredByNamespaceAndTags.length, '                Routes', filteredByNamespaceAndTags.reduce( (acc, s ) => { acc += Object.keys( s.routes ).length; return acc }, 0 ) )
+
+        const two = filteredByNamespaceAndTags
+            .filter( ( schema ) => {
+                const { namespace } = schema
+                if( Object.keys( schemaFilters ).length === 0 ) { return true }
+                return Object.hasOwn( schemaFilters, namespace )
+            } )
+            .map( ( schema ) => {
+                const { namespace } = schema
+                const newSchema = { ...schema }
+                if( Object.keys( schemaFilters ).length === 0 ) { return newSchema }
+                const schemaFilter = schemaFilters[ namespace ]
+                const hasIncludeRouteNames = schemaFilter
+                    .some( routeNameCmd => !routeNameCmd.startsWith( '!' ) )
+
+                newSchema['routes'] = Object
+                    .entries( schema['routes'] )
+                    .filter( ( [ routeName ] ) => {
+                        // exclude routes with '!' prefix
+                        const excludeTag = `!${routeName.toLowerCase()}`
+                        if( schemaFilter.includes( excludeTag ) ) { return false }
+                        if( hasIncludeRouteNames ) {
+                            const hasIncludeRouteName = schemaFilter
+                                .some( ( routeNameCmd ) => {
+                                    if( routeNameCmd.startsWith( '!' ) ) { return false }
+                                    return routeNameCmd.toLowerCase() === routeName.toLowerCase()
+                                } ) 
+                            return hasIncludeRouteName
+                        } else { return true }
+                    } )
+                    .reduce( ( acc, [ routeName, route ] ) => {
+                        acc[ routeName ] = route
+                        return acc
+                    }, {} )
+
+                return newSchema
+            } )
+            .filter( ( schema ) => {
+                const { routes } = schema
+                return Object.keys( routes ).length > 0
+            } )
+// console.log( 'D', 'FilteredByNamespaceAndTagsAndSchemaFilters', two.length, 'Routes', two.reduce( (acc, s ) => { acc += Object.keys( s.routes ).length; return acc }, 0 ) )
+
+        return { filteredArrayOfSchemas: two }
+    }
+
+
+    static activateServerTools( { server, schema, serverParams, validate=true, silent=true } ) {
         if( validate ) {
             Validation.schema( { schema } )
             Validation.serverParams( { schema, serverParams } )
@@ -78,43 +168,6 @@ class FlowMCP {
         const { routes } = schema
         let routeNames = Object
             .keys( routes )
-
-        if( activateTags.length > 0 ) {
-            const { tags } = schema
-            const _tags = tags
-                .map( tag => tag.toLowerCase().split( '.' )[ 0 ].toLowerCase() )
-            const _activateTags = activateTags
-                .map( tag => tag.toLowerCase().split( '.' )[ 0 ].toLowerCase() )
-            if( tags.length === 0 ) { return [] }
-            const set1 = new Set( _tags )
-            const hasMatch = _activateTags.some(item => set1.has(item) )
-            if( !hasMatch ) { return [] }
-
-            const { includeRouteName, excludeRouteName } = tags
-                .filter( ( tag ) => tag.includes( '.' ) )
-                .filter( ( tag ) => _activateTags.includes( tag.split( '.' )[ 0 ] ) )
-                .reduce( ( acc, tag ) => {
-                    const [ tagName, routeNameCmd] = tag.split( '.' )
-                    if( routeNameCmd.startsWith( '!' ) ) {
-                        const routeName = routeNameCmd.substring( 1 )
-                        acc.excludeRouteName.push( routeName )
-                    } else {
-                        acc.includeRouteName.push( routeNameCmd )
-                    }
-                    return acc
-                }, { includeRouteName: [], excludeRouteName: [] } )
-            routeNames = routeNames
-                .filter( ( routeName ) => {
-                    if( includeRouteName.length > 0 ) {
-                        return includeRouteName.includes( routeName )
-                    } else if( excludeRouteName.length > 0 ) {
-                        return !excludeRouteName.includes( routeName )
-                    } else {
-                        return true
-                    }
-                } )
-
-        }
 
         const mcpTools = routeNames
             .reduce( ( acc, routeName ) => {
