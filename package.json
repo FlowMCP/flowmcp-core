@@ -8,7 +8,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles",
     "inspector": "npx @modelcontextprotocol/inspector"
   },
   "keywords": [],
@@ -22,7 +22,8 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/inspector": "^0.13.0",
-    "schemaImporter": "github:flowmcp/flowMCP-schemas#3d378b3a61452126c833d667a9189ca578813c48", 
-    "flowmcpServers": "github:flowmcp/flowMCP-servers#0c3c15d41ded418ad70d84d0ee267009e262af29"
+    "flowmcpServers": "github:flowmcp/flowMCP-servers#0c3c15d41ded418ad70d84d0ee267009e262af29",
+    "schemaImporter": "github:flowmcp/flowMCP-schemas#3d378b3a61452126c833d667a9189ca578813c48",
+    "jest": "^30.0.3"
   }
-} 
+}
