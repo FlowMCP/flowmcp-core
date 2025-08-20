@@ -114,9 +114,11 @@ class Validation {
 
     static filterArrayOfSchemas( { arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags } ) {
         const messages = []
-        if( !Array.isArray( arrayOfSchemas ) || arrayOfSchemas.length === 0 ) {
+        if( !Array.isArray( arrayOfSchemas ) ) {
             messages.push( 'Missing or invalid arrayOfSchemas' )
-        } else if( !arrayOfSchemas.every( ( path ) => typeof path === 'object' ) ) {
+        } else if( arrayOfSchemas.length === 0 ) {
+            messages.push( 'Missing or invalid arrayOfSchemas' )
+        } else if( !arrayOfSchemas.every( ( schema ) => typeof schema === 'object' && schema !== null ) ) {
             messages.push( 'arrayOfSchemas must be an array of objects' )
         }
 

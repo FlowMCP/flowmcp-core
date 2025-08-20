@@ -72,75 +72,144 @@ class FlowMCP {
     static filterArrayOfSchemas( { arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags } ) {
         Validation.filterArrayOfSchemas( { arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags } )
 
+        const errors = []
+
+        // Step 1: Namespace Filtering
         const filteredByNamespaces = arrayOfSchemas
             .filter( ( schema ) => {
                 const { namespace } = schema
                 if( includeNamespaces.length > 0 ) {
-                    return includeNamespaces.includes( namespace )
+                    return includeNamespaces
+                        .some( includeNs => includeNs.toLowerCase() === namespace.toLowerCase() )
                 } else if( excludeNamespaces.length > 0 ) {
-                    return !excludeNamespaces.includes( namespace )
+                    return !excludeNamespaces
+                        .some( excludeNs => excludeNs.toLowerCase() === namespace.toLowerCase() )
                 } else {
                     return true
                 }
             } )
-// console.log( 'A', 'Schemas', filteredByNamespaces.length, '                                   Routes', filteredByNamespaces.reduce( (acc, s ) => { acc += Object.keys( s.routes ).length; return acc }, 0 ) )
 
-        const { filterTags, schemaFilters } = activateTags
+        // Parse activateTags into filterTags and schemaFilters
+        const { filterTags, schemaFilters, invalidTags } = activateTags
             .reduce( ( acc, tag ) => {
-                if( !tag.includes( '.' ) ) {
-                    acc['filterTags' ].push( tag.toLowerCase() )
+                if( typeof tag !== 'string' || tag.trim() === '' ) {
+                    acc['invalidTags'].push( tag )
                     return acc
+                }
+
+                if( !tag.includes( '.' ) ) {
+                    acc['filterTags'].push( tag.toLowerCase() )
                 } else {
-                    const [ namespace, routeNameCmd ] = tag.split( '.' )
-                    if( !Object.hasOwn( acc['schemaFilters'], namespace ) ) {
-                        acc['schemaFilters'][ namespace ] = []
+                    const parts = tag.split( '.' )
+                    if( parts.length !== 2 || parts[0] === '' || parts[1] === '' ) {
+                        acc['invalidTags'].push( tag )
+                        return acc
                     }
-                    acc['schemaFilters'][ namespace ].push( routeNameCmd.toLowerCase() )
+
+                    const [ namespace, routeNameCmd ] = parts
+                    if( !Object.hasOwn( acc['schemaFilters'], namespace.toLowerCase() ) ) {
+                        acc['schemaFilters'][ namespace.toLowerCase() ] = []
+                    }
+                    acc['schemaFilters'][ namespace.toLowerCase() ].push( routeNameCmd.toLowerCase() )
                 }
                 return acc
-            }, { 'filterTags': [], 'schemaFilters': {} } )
-// console.log( 'B', 'FilterTags', filterTags.length, 'SchemaFilters', Object.keys( schemaFilters ).length )
+            }, { 'filterTags': [], 'schemaFilters': {}, 'invalidTags': [] } )
 
-        const filteredByNamespaceAndTags = filteredByNamespaces
-            .filter( ( schema ) => {
-                if( filterTags.length === 0 ) { return true }
-                else {
-                    const { tags } = schema
-                    const hasTag = filterTags
-                        .some( tag => tags.map( t => t.toLowerCase() ).includes( tag ) )
-                    return hasTag
-                }
+        // Collect invalid syntax errors
+        invalidTags
+            .forEach( tag => {
+                errors.push( `Invalid activateTags syntax: '${tag}'` )
             } )
-// console.log( 'C', 'FilteredByNamespaceAndTags', filteredByNamespaceAndTags.length, '                Routes', filteredByNamespaceAndTags.reduce( (acc, s ) => { acc += Object.keys( s.routes ).length; return acc }, 0 ) )
 
-        const two = filteredByNamespaceAndTags
+        // Step 2 & 3: Combined Tag and Route Filtering
+        const processedSchemas = filteredByNamespaces
             .filter( ( schema ) => {
-                const { namespace } = schema
-                if( Object.keys( schemaFilters ).length === 0 ) { return true }
-                return Object.hasOwn( schemaFilters, namespace )
+                const { tags } = schema
+                const namespaceKey = schema.namespace.toLowerCase()
+                
+                // If no filters at all, keep all schemas
+                if( filterTags.length === 0 && Object.keys( schemaFilters ).length === 0 ) {
+                    return true
+                }
+                
+                // If only route filters (no tag filters), only keep schemas with route filters
+                if( filterTags.length === 0 && Object.keys( schemaFilters ).length > 0 ) {
+                    return Object.hasOwn( schemaFilters, namespaceKey )
+                }
+                
+                // If only tag filters (no route filters), filter by tags
+                if( filterTags.length > 0 && Object.keys( schemaFilters ).length === 0 ) {
+                    return filterTags.some( filterTag => 
+                        tags.some( schemaTag => schemaTag.toLowerCase() === filterTag )
+                    )
+                }
+                
+                // If both tag and route filters, use OR logic
+                const hasMatchingTag = filterTags
+                    .some( filterTag => 
+                        tags.some( schemaTag => schemaTag.toLowerCase() === filterTag )
+                    )
+                
+                const hasRouteFilter = Object.hasOwn( schemaFilters, namespaceKey )
+                
+                return hasMatchingTag || hasRouteFilter
             } )
             .map( ( schema ) => {
                 const { namespace } = schema
                 const newSchema = { ...schema }
-                if( Object.keys( schemaFilters ).length === 0 ) { return newSchema }
-                const schemaFilter = schemaFilters[ namespace ]
+                
+                if( Object.keys( schemaFilters ).length === 0 ) { 
+                    return newSchema 
+                }
+
+                const namespaceKey = namespace.toLowerCase()
+                
+                // If no route filters for this namespace, keep all routes
+                if( !Object.hasOwn( schemaFilters, namespaceKey ) ) {
+                    return newSchema
+                }
+
+                const schemaFilter = schemaFilters[ namespaceKey ]
                 const hasIncludeRouteNames = schemaFilter
                     .some( routeNameCmd => !routeNameCmd.startsWith( '!' ) )
+
+                // Track non-existent routes
+                const existingRouteNames = Object.keys( schema.routes )
+                    .map( routeName => routeName.toLowerCase() )
+
+                schemaFilter
+                    .forEach( routeNameCmd => {
+                        const routeName = routeNameCmd.startsWith( '!' ) 
+                            ? routeNameCmd.substring( 1 ) 
+                            : routeNameCmd
+                        
+                        if( !existingRouteNames.includes( routeName ) ) {
+                            errors.push( `Route '${routeName}' not found in namespace '${namespace}'` )
+                        }
+                    } )
 
                 newSchema['routes'] = Object
                     .entries( schema['routes'] )
                     .filter( ( [ routeName ] ) => {
-                        // exclude routes with '!' prefix
-                        const excludeTag = `!${routeName.toLowerCase()}`
-                        if( schemaFilter.includes( excludeTag ) ) { return false }
+                        const routeNameLower = routeName.toLowerCase()
+                        
+                        // Exclude routes with '!' prefix (exclude takes priority)
+                        const excludeTag = `!${routeNameLower}`
+                        if( schemaFilter.includes( excludeTag ) ) { 
+                            return false 
+                        }
+                        
                         if( hasIncludeRouteNames ) {
+                            // If include routes specified, only keep included ones
                             const hasIncludeRouteName = schemaFilter
                                 .some( ( routeNameCmd ) => {
                                     if( routeNameCmd.startsWith( '!' ) ) { return false }
-                                    return routeNameCmd.toLowerCase() === routeName.toLowerCase()
-                                } ) 
+                                    return routeNameCmd === routeNameLower
+                                } )
                             return hasIncludeRouteName
-                        } else { return true }
+                        } else { 
+                            return true 
+                        }
                     } )
                     .reduce( ( acc, [ routeName, route ] ) => {
                         acc[ routeName ] = route
@@ -149,13 +218,48 @@ class FlowMCP {
 
                 return newSchema
             } )
-            .filter( ( schema ) => {
-                const { routes } = schema
-                return Object.keys( routes ).length > 0
-            } )
-// console.log( 'D', 'FilteredByNamespaceAndTagsAndSchemaFilters', two.length, 'Routes', two.reduce( (acc, s ) => { acc += Object.keys( s.routes ).length; return acc }, 0 ) )
 
-        return { filteredArrayOfSchemas: two }
+        // Collect errors for non-existent namespaces in schemaFilters
+        Object.keys( schemaFilters )
+            .forEach( namespaceKey => {
+                const hasMatchingSchema = filteredByNamespaces
+                    .some( schema => schema.namespace.toLowerCase() === namespaceKey )
+                
+                if( !hasMatchingSchema ) {
+                    // Find original namespace name for error message
+                    const originalNamespace = activateTags
+                        .find( tag => tag.includes( '.' ) && tag.split( '.' )[0].toLowerCase() === namespaceKey )
+                        ?.split( '.' )[0] || namespaceKey
+                    
+                    errors.push( `Namespace '${originalNamespace}' not found in schemas` )
+                }
+            } )
+
+        // Step 4: Remove schemas with empty routes and collect errors
+        const finalSchemas = processedSchemas
+            .filter( ( schema ) => {
+                const hasRoutes = Object.keys( schema.routes ).length > 0
+                
+                if( !hasRoutes ) {
+                    errors.push( `Schema '${schema.namespace}' has no routes after filtering` )
+                    return false
+                }
+                
+                return true
+            } )
+
+        // Report collected errors
+        if( errors.length > 0 ) {
+            const errorMessage = `
+Filtering completed with warnings:
+${errors.map( err => `- ${err}` ).join( '\n' )}
+
+Filtered ${finalSchemas.length} schemas successfully.`
+            
+            console.warn( errorMessage.trim() )
+        }
+
+        return { filteredArrayOfSchemas: finalSchemas }
     }
 
 

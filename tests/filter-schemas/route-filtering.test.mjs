@@ -1,0 +1,212 @@
+import { FlowMCP } from '../../src/index.mjs'
+import { mockSchemas } from './mock-schemas.mjs'
+
+
+describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () => {
+    let originalWarn
+    
+    beforeEach( () => {
+        originalWarn = console.warn
+        console.warn = () => {} // Suppress console.warn output
+    } )
+    
+    afterEach( () => {
+        console.warn = originalWarn
+    } )
+
+    it( 'includes specific routes with namespace.routeName syntax', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.getBlocks' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
+        expect( Object.keys( filteredArrayOfSchemas[ 0 ].routes ) ).toEqual( [ 'getBlocks' ] )
+        expect( filteredArrayOfSchemas[ 0 ].routes ).toHaveProperty( 'getBlocks' )
+        expect( filteredArrayOfSchemas[ 0 ].routes ).not.toHaveProperty( 'getBlockTransactions' )
+        expect( filteredArrayOfSchemas[ 0 ].routes ).not.toHaveProperty( 'getBalance' )
+    } )
+
+
+    it( 'includes multiple specific routes from same namespace', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.getBlocks', 'luksoNetwork.getBalance' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
+        
+        const routes = Object.keys( filteredArrayOfSchemas[ 0 ].routes )
+        expect( routes ).toHaveLength( 2 )
+        expect( routes ).toContain( 'getBlocks' )
+        expect( routes ).toContain( 'getBalance' )
+        expect( routes ).not.toContain( 'getBlockTransactions' )
+    } )
+
+
+    it( 'excludes specific routes with ! prefix', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.!getBlocks' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
+        
+        const routes = Object.keys( filteredArrayOfSchemas[ 0 ].routes )
+        expect( routes ).toHaveLength( 2 )
+        expect( routes ).toContain( 'getBlockTransactions' )
+        expect( routes ).toContain( 'getBalance' )
+        expect( routes ).not.toContain( 'getBlocks' )
+    } )
+
+
+    it( 'excludes multiple specific routes with ! prefix', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.!getBlocks', 'luksoNetwork.!getBlockTransactions' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
+        
+        const routes = Object.keys( filteredArrayOfSchemas[ 0 ].routes )
+        expect( routes ).toHaveLength( 1 )
+        expect( routes ).toContain( 'getBalance' )
+        expect( routes ).not.toContain( 'getBlocks' )
+        expect( routes ).not.toContain( 'getBlockTransactions' )
+    } )
+
+
+    it( 'combines include and exclude routes - exclude takes priority', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.getBlocks', 'luksoNetwork.!getBlocks' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    } )
+
+
+    it( 'filters routes from multiple namespaces', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.getBlocks', 'testNamespaceA.getBalance' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 2 )
+        
+        const luksoSchema = filteredArrayOfSchemas
+            .find( ( schema ) => schema.namespace === 'luksoNetwork' )
+        const testSchemaA = filteredArrayOfSchemas
+            .find( ( schema ) => schema.namespace === 'testNamespaceA' )
+        
+        expect( Object.keys( luksoSchema.routes ) ).toEqual( [ 'getBlocks' ] )
+        expect( Object.keys( testSchemaA.routes ) ).toEqual( [ 'getBalance' ] )
+    } )
+
+
+    it( 'handles case sensitivity in route names', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.GETBLOCKS' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
+        expect( Object.keys( filteredArrayOfSchemas[ 0 ].routes ) ).toEqual( [ 'getBlocks' ] )
+    } )
+
+
+    it( 'returns empty array when namespace in schemaFilter does not exist', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'nonExistentNamespace.someRoute' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    } )
+
+
+    it( 'returns empty array when route in schemaFilter does not exist', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.nonExistentRoute' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    } )
+
+
+    it( 'filters out schemas with empty routes after route filtering', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.!getBlocks', 'luksoNetwork.!getBlockTransactions', 'luksoNetwork.!getBalance' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    } )
+
+
+    it( 'preserves original route structure and metadata', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.getBlocks' ]
+        } )
+
+        expect( filteredArrayOfSchemas[ 0 ].routes.getBlocks ).toEqual( {
+            method: 'GET',
+            path: '/blocks'
+        } )
+    } )
+
+
+    it( 'combines namespace filtering with route filtering', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [ 'luksoNetwork' ],
+            excludeNamespaces: [],
+            activateTags: [ 'luksoNetwork.getBlocks' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
+        expect( Object.keys( filteredArrayOfSchemas[ 0 ].routes ) ).toEqual( [ 'getBlocks' ] )
+    } )
+
+
+    it( 'ignores namespace in activateTags when namespace is excluded', () => {
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: mockSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [ 'luksoNetwork' ],
+            activateTags: [ 'luksoNetwork.getBlocks' ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    } )
+} )
