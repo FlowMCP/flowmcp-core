@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { stringify as flattedStringify } from 'flatted'
 import { Validation } from './Validation.mjs'
 
@@ -173,6 +172,13 @@ class Fetch {
 
 
     static async #executeDefault( { struct, payload } ) {
+        return await Fetch.#execute( { struct, payload } )
+    }
+
+
+
+
+    static async #execute( { struct, payload } ) {
         const { requestMethod, url, headers, body, modifiers } = payload
         struct['status'] = struct['messages'].length === 0
         if( struct['status'] === false ) { return struct }
@@ -180,8 +186,16 @@ class Fetch {
         switch( requestMethod.toUpperCase() ) {
             case 'GET':
                 try {
-                    const response = await axios.get( url, { headers } )
-                    const { data } = response
+                    const response = await fetch( url, { 
+                        method: 'GET',
+                        headers 
+                    } )
+                    
+                    if( !response.ok ) {
+                        throw new Error( `HTTP ${response.status}: ${response.statusText}` )
+                    }
+                    
+                    const data = await response.json()
                     struct['data'] = data
                 } catch( error ) {
                     struct['status'] = false
@@ -191,8 +205,20 @@ class Fetch {
                 break;
             case 'POST':
                 try {
-                    const response = await axios.post( url, body, { headers } )
-                    const { data } = response
+                    const response = await fetch( url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...headers
+                        },
+                        body: JSON.stringify( body )
+                    } )
+                    
+                    if( !response.ok ) {
+                        throw new Error( `HTTP ${response.status}: ${response.statusText}` )
+                    }
+                    
+                    const data = await response.json()
                     struct['data'] = data
                 } catch( error ) {
                     struct['status'] = false
@@ -234,15 +260,23 @@ class Fetch {
 
     static getErrorMessages( { error } ) {
         let messages = []
-        if( error.response ) {
-            messages.push( `Status: ${error.response?.status}` )
-            messages.push( `Text: ${error.response?.statusText}` )
-            try { messages.push( `Data: ${JSON.stringify( error.response?.data ) }` ) } 
-            catch( _ ) { messages.push( `${error.response?.data}` )}
-        } else if( error.request ) {
+        
+        // For fetch Response errors (HTTP status errors)
+        if( error.message && error.message.includes( 'HTTP' ) ) {
+            messages.push( error.message )
+        }
+        // For network errors (no response)
+        else if( error.name === 'TypeError' || error.message.includes( 'fetch' ) ) {
             messages.push( 'No response received from server.' )
-            messages.push( 'Request:', error.request )
-        } else {
+            messages.push( 'Network error:', error.message )
+        }
+        // For JSON parsing errors
+        else if( error.name === 'SyntaxError' && error.message.includes( 'JSON' ) ) {
+            messages.push( 'Invalid JSON response from server.' )
+            messages.push( 'Parse error:', error.message )
+        }
+        // For general errors
+        else {
             messages.push( 'Error in setting up the request:', error.message )
         }
 
