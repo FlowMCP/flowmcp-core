@@ -154,6 +154,8 @@ console.log('Parsed configuration:', config)
 
 Advanced filtering system for schema arrays with namespace, tag, and route-level filtering capabilities. Supports case-insensitive matching and comprehensive error collection.
 
+> 📋 **For complete technical specification and implementation details, see [FILTERING.md](./FILTERING.md)**
+
 **Method**
 
 ```js
@@ -939,7 +941,8 @@ console.log(`Filtered ${filteredArrayOfSchemas.length} schemas in ${endTime - st
 
 For additional documentation and examples:
 
-- **FILTERING.md** - Complete schema filtering specification and syntax guide
+- **[spec/v.1.2.2-spec.md](./spec/v.1.2.2-spec.md)** - Official FlowMCP Technical Standard (Version 1.2.2) with complete schema structure specification
+- **[FILTERING.md](./FILTERING.md)** - Comprehensive technical specification for the `filterArrayOfSchemas()` method with detailed filter pipeline documentation, syntax rules, and error handling strategies
 - **tests/** - Comprehensive test suite with examples for all functionality
 - **schemas/** - Example schema definitions for popular APIs
 
