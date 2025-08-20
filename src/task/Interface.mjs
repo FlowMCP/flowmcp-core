@@ -126,6 +126,7 @@ class Interface {
                 value = parseFloat( option.slice( zType.length + 1, -1 ) )
                 break
             case 'integer':
+            case 'int':
                 value = parseInt( option.slice( zType.length + 1, -1 ) )
                 break
             case 'string':

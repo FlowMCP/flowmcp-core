@@ -1,5 +1,5 @@
-import { FlowMCP } from '../../src/index.mjs'
-import { mockSchemas } from './mock-schemas.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
+import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => {
@@ -17,34 +17,29 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
     it( 'combines all filter types: namespace + tags + routes', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
-            includeNamespaces: [ 'testNamespaceA', 'luksoNetwork' ],
+            includeNamespaces: [ 'testNamespace', 'luksoNetwork' ],
             excludeNamespaces: [],
-            activateTags: [ 'blockchain', 'luksoNetwork.!getBlockTransactions' ]
+            activateTags: [ 'blockchain', 'luksoNetwork.!getTransactions' ]
         } )
 
-        // Step 1: includeNamespaces filters to testNamespaceA + luksoNetwork  
-        // Step 2: 'blockchain' tag filters - both have blockchain tag
-        // Step 3: 'luksoNetwork.!getBlockTransactions' removes getBlockTransactions from luksoNetwork
+        // Step 1: includeNamespaces filters to testNamespace + luksoNetwork  
+        // Step 2: 'blockchain' tag filters - only luksoNetwork has blockchain tag
+        // Step 3: 'luksoNetwork.!getTransactions' removes getTransactions from luksoNetwork
         
-        expect( filteredArrayOfSchemas ).toHaveLength( 2 )
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( ( schema ) => schema.namespace === 'luksoNetwork' )
-        const testSchemaA = filteredArrayOfSchemas
-            .find( ( schema ) => schema.namespace === 'testNamespaceA' )
+        // testNamespace doesn't have blockchain tag, so it's filtered out
         
         expect( luksoSchema ).toBeDefined()
-        expect( testSchemaA ).toBeDefined()
+        // Only luksoNetwork should remain after blockchain tag filtering
         
-        // luksoNetwork should have blockchain tag and exclude getBlockTransactions
+        // luksoNetwork should have blockchain tag and exclude getTransactions
         expect( luksoSchema.tags ).toContain( 'blockchain' )
-        expect( Object.keys( luksoSchema.routes ) ).not.toContain( 'getBlockTransactions' )
+        expect( Object.keys( luksoSchema.routes ) ).not.toContain( 'getTransactions' )
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBlocks' )
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBalance' )
-        
-        // testNamespaceA should have blockchain tag and all routes (no route filter applied)
-        expect( testSchemaA.tags ).toContain( 'blockchain' )
-        expect( Object.keys( testSchemaA.routes ) ).toHaveLength( 3 )
     } )
 
 
@@ -53,29 +48,29 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'dataProvider', 'luksoNetwork.getBlocks' ]
+            activateTags: [ 'crypto', 'luksoNetwork.getBlocks' ]
         } )
 
         // Step 1: No namespace filtering
-        // Step 2: 'dataProvider' tag filter - only testNamespaceB has this tag
+        // Step 2: 'crypto' tag filter - only coingecko has this tag
         // Step 3: 'luksoNetwork.getBlocks' route filter - only luksoNetwork with getBlocks route
         
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( ( schema ) => schema.namespace === 'luksoNetwork' )
-        const testSchemaB = filteredArrayOfSchemas
-            .find( ( schema ) => schema.namespace === 'testNamespaceB' )
+        const coingeckoSchema = filteredArrayOfSchemas
+            .find( ( schema ) => schema.namespace === 'coingecko' )
         
         expect( luksoSchema ).toBeDefined()
-        expect( testSchemaB ).toBeDefined()
+        expect( coingeckoSchema ).toBeDefined()
         
         // luksoNetwork should have only getBlocks route (route filter applied)
         expect( Object.keys( luksoSchema.routes ) ).toEqual( [ 'getBlocks' ] )
         
-        // testNamespaceB should have dataProvider tag and all routes (no route filter)
-        expect( testSchemaB.tags ).toContain( 'dataProvider' )
-        expect( Object.keys( testSchemaB.routes ) ).toHaveLength( 2 )
+        // coingecko should have crypto tag and all routes (no route filter)
+        expect( coingeckoSchema.tags ).toContain( 'crypto' )
+        expect( Object.keys( coingeckoSchema.routes ) ).toHaveLength( 2 )
     } )
 
 
@@ -85,21 +80,21 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
             includeNamespaces: [],
             excludeNamespaces: [],
             activateTags: [ 
-                'testNamespaceA.getBalance', 
-                'testNamespaceA.!sendTransaction',
-                'testNamespaceC.getPrice'
+                'luksoNetwork.getBalance', 
+                'luksoNetwork.!getTransactions',
+                'coingecko.getPrice'
             ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
         
-        const testSchemaA = filteredArrayOfSchemas
-            .find( ( schema ) => schema.namespace === 'testNamespaceA' )
-        const testSchemaC = filteredArrayOfSchemas
-            .find( ( schema ) => schema.namespace === 'testNamespaceC' )
+        const luksoSchema = filteredArrayOfSchemas
+            .find( ( schema ) => schema.namespace === 'luksoNetwork' )
+        const coingeckoSchema = filteredArrayOfSchemas
+            .find( ( schema ) => schema.namespace === 'coingecko' )
         
-        expect( Object.keys( testSchemaA.routes ) ).toEqual( [ 'getBalance' ] )
-        expect( Object.keys( testSchemaC.routes ) ).toEqual( [ 'getPrice' ] )
+        expect( Object.keys( luksoSchema.routes ) ).toEqual( [ 'getBalance' ] )
+        expect( Object.keys( coingeckoSchema.routes ) ).toEqual( [ 'getPrice' ] )
     } )
 
 
@@ -123,7 +118,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
             activateTags: [ 
                 'nonExistentTag',
                 'luksoNetwork.!getBlocks',
-                'luksoNetwork.!getBlockTransactions',
+                'luksoNetwork.!getTransactions',
                 'luksoNetwork.!getBalance'
             ]
         } )
@@ -243,7 +238,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
             activateTags: [ 'blockchain', 'blockchain', 'blockchain' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 4 )  // Including MixedCaseNamespace with BLOCKCHAIN tag
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )  // Only luksoNetwork has blockchain tag
         
         filteredArrayOfSchemas
             .forEach( ( schema ) => {

@@ -1,5 +1,5 @@
-import { FlowMCP } from '../../src/index.mjs'
-import { mockSchemas } from './mock-schemas.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
+import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () => {
@@ -63,8 +63,8 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
         
         const routes = Object.keys( filteredArrayOfSchemas[ 0 ].routes )
         expect( routes ).toHaveLength( 2 )
-        expect( routes ).toContain( 'getBlockTransactions' )
         expect( routes ).toContain( 'getBalance' )
+        expect( routes ).toContain( 'getTransactions' )
         expect( routes ).not.toContain( 'getBlocks' )
     } )
 
@@ -74,7 +74,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'luksoNetwork.!getBlocks', 'luksoNetwork.!getBlockTransactions' ]
+            activateTags: [ 'luksoNetwork.!getBlocks', 'luksoNetwork.!getTransactions' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 1 )
@@ -84,7 +84,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
         expect( routes ).toHaveLength( 1 )
         expect( routes ).toContain( 'getBalance' )
         expect( routes ).not.toContain( 'getBlocks' )
-        expect( routes ).not.toContain( 'getBlockTransactions' )
+        expect( routes ).not.toContain( 'getTransactions' )
     } )
 
 
@@ -105,18 +105,18 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'luksoNetwork.getBlocks', 'testNamespaceA.getBalance' ]
+            activateTags: [ 'luksoNetwork.getBlocks', 'testNamespace.testRoute' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( ( schema ) => schema.namespace === 'luksoNetwork' )
-        const testSchemaA = filteredArrayOfSchemas
-            .find( ( schema ) => schema.namespace === 'testNamespaceA' )
+        const testSchema = filteredArrayOfSchemas
+            .find( ( schema ) => schema.namespace === 'testNamespace' )
         
         expect( Object.keys( luksoSchema.routes ) ).toEqual( [ 'getBlocks' ] )
-        expect( Object.keys( testSchemaA.routes ) ).toEqual( [ 'getBalance' ] )
+        expect( Object.keys( testSchema.routes ) ).toEqual( [ 'testRoute' ] )
     } )
 
 
@@ -163,7 +163,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'luksoNetwork.!getBlocks', 'luksoNetwork.!getBlockTransactions', 'luksoNetwork.!getBalance' ]
+            activateTags: [ 'luksoNetwork.!getBlocks', 'luksoNetwork.!getTransactions', 'luksoNetwork.!getBalance' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 0 )
@@ -178,10 +178,13 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
             activateTags: [ 'luksoNetwork.getBlocks' ]
         } )
 
-        expect( filteredArrayOfSchemas[ 0 ].routes.getBlocks ).toEqual( {
-            method: 'GET',
-            path: '/blocks'
-        } )
+        const route = filteredArrayOfSchemas[ 0 ].routes.getBlocks
+        expect( route ).toHaveProperty( 'requestMethod', 'GET' )
+        expect( route ).toHaveProperty( 'route', '/blocks' )
+        expect( route ).toHaveProperty( 'description' )
+        expect( route ).toHaveProperty( 'parameters' )
+        expect( route ).toHaveProperty( 'tests' )
+        expect( route ).toHaveProperty( 'modifiers' )
     } )
 
 

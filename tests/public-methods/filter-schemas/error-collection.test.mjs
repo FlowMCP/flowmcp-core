@@ -1,5 +1,5 @@
-import { FlowMCP } from '../../src/index.mjs'
-import { mockSchemas } from './mock-schemas.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
+import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
@@ -24,13 +24,13 @@ describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
     it( 'collects errors for schemas with empty routes after filtering', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
-            includeNamespaces: [ 'emptyRoutes' ],
+            includeNamespaces: [ 'testNamespace' ],
             excludeNamespaces: [],
-            activateTags: []
+            activateTags: [ 'testNamespace.!testRoute' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 0 )
-        expect( consoleWarnSpy.some( call => call.includes( "Schema 'emptyRoutes' has no routes after filtering" ) ) ).toBe( true )
+        expect( consoleWarnSpy.some( call => call.includes( "Schema 'testNamespace' has no routes after filtering" ) ) ).toBe( true )
     } )
 
 
@@ -79,14 +79,14 @@ describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
             activateTags: [ 
                 'luksoNetwork.unknownRoute',
                 'luksoNetwork.anotherUnknownRoute',
-                'testNamespaceA.nonExistentMethod',
+                'testNamespace.nonExistentMethod',
                 'luksoNetwork.getBlocks' // valid
             ]
         } )
 
         expect( consoleWarnSpy.some( call => call.includes( "Route 'unknownroute' not found in namespace 'luksoNetwork'" ) ) ).toBe( true )
         expect( consoleWarnSpy.some( call => call.includes( "Route 'anotherunknownroute' not found in namespace 'luksoNetwork'" ) ) ).toBe( true )
-        expect( consoleWarnSpy.some( call => call.includes( "Route 'nonexistentmethod' not found in namespace 'testNamespaceA'" ) ) ).toBe( true )
+        expect( consoleWarnSpy.some( call => call.includes( "Route 'nonexistentmethod' not found in namespace 'testNamespace'" ) ) ).toBe( true )
     } )
 
 
@@ -96,11 +96,11 @@ describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
             includeNamespaces: [],
             excludeNamespaces: [],
             activateTags: [ 
-                'validTag',                          // OK
+                'crypto',                            // OK - valid tag
                 'invalid.syntax.too.many.dots',      // Error: invalid syntax
                 'unknownNamespace.getBlocks',        // Error: unknown namespace
                 'luksoNetwork.unknownRoute',         // Error: unknown route
-                'emptyRoutes.!allRoutes'             // Will cause empty routes error
+                'testNamespace.!testRoute'           // Will cause empty routes error
             ]
         } )
 
@@ -115,7 +115,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
         expect( warningCall ).toContain( "Invalid activateTags syntax: 'invalid.syntax.too.many.dots'" )
         expect( warningCall ).toContain( "Namespace 'unknownNamespace' not found in schemas" )
         expect( warningCall ).toContain( "Route 'unknownroute' not found in namespace 'luksoNetwork'" )
-        expect( warningCall ).toContain( "Schema 'emptyRoutes' has no routes after filtering" )
+        expect( warningCall ).toContain( "Schema 'testNamespace' has no routes after filtering" )
     } )
 
 

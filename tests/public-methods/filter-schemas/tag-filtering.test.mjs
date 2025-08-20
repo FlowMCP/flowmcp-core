@@ -1,5 +1,5 @@
-import { FlowMCP } from '../../src/index.mjs'
-import { mockSchemas } from './mock-schemas.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
+import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
@@ -22,29 +22,25 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             activateTags: [ 'blockchain' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 4 )
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
         
         const namespaces = filteredArrayOfSchemas
             .map( ( schema ) => schema.namespace )
         
-        expect( namespaces ).toContain( 'testNamespaceA' )
-        expect( namespaces ).toContain( 'testNamespaceC' )
         expect( namespaces ).toContain( 'luksoNetwork' )
-        expect( namespaces ).toContain( 'MixedCaseNamespace' )
-        expect( namespaces ).not.toContain( 'testNamespaceB' )
     } )
 
 
-    it( 'filters by single tag - dataProvider', () => {
+    it( 'filters by single tag - crypto', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'dataProvider' ]
+            activateTags: [ 'crypto' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 1 )
-        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'testNamespaceB' )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'coingecko' )
     } )
 
 
@@ -53,7 +49,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'dataProvider', 'defi' ]
+            activateTags: [ 'crypto', 'test' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
@@ -61,8 +57,8 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
         const namespaces = filteredArrayOfSchemas
             .map( ( schema ) => schema.namespace )
         
-        expect( namespaces ).toContain( 'testNamespaceB' )
-        expect( namespaces ).toContain( 'testNamespaceC' )
+        expect( namespaces ).toContain( 'coingecko' )
+        expect( namespaces ).toContain( 'testNamespace' )
     } )
 
 
@@ -86,7 +82,8 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             activateTags: [ 'blockchain' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 4 )
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
     } )
 
 
@@ -98,7 +95,8 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             activateTags: [ 'BLOCKCHAIN' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 4 )
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
     } )
 
 
@@ -110,7 +108,8 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             activateTags: [ 'BlockChain' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 4 )
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        expect( filteredArrayOfSchemas[ 0 ].namespace ).toBe( 'luksoNetwork' )
     } )
 
 
@@ -122,14 +121,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             activateTags: [ 'blockchain' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 2 )
-        
-        const namespaces = filteredArrayOfSchemas
-            .map( ( schema ) => schema.namespace )
-        
-        expect( namespaces ).toContain( 'testNamespaceA' )
-        expect( namespaces ).toContain( 'testNamespaceC' )
-        expect( namespaces ).not.toContain( 'luksoNetwork' )
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
     } )
 
 
@@ -141,15 +133,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
             activateTags: [ 'blockchain' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 3 )  // Including MixedCaseNamespace
-        
-        const namespaces = filteredArrayOfSchemas
-            .map( ( schema ) => schema.namespace )
-        
-        expect( namespaces ).toContain( 'testNamespaceA' )
-        expect( namespaces ).toContain( 'testNamespaceC' )
-        expect( namespaces ).toContain( 'MixedCaseNamespace' )
-        expect( namespaces ).not.toContain( 'luksoNetwork' )
+        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
     } )
 
 

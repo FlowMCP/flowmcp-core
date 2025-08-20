@@ -1,4 +1,4 @@
-import { FlowMCP } from '../../src/index.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Input Validation', () => {

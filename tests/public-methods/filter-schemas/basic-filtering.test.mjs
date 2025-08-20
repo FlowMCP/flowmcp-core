@@ -1,5 +1,5 @@
-import { FlowMCP } from '../../src/index.mjs'
-import { mockSchemas, expectedResults } from './mock-schemas.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
+import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Basic Namespace Filtering', () => {
@@ -31,7 +31,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Basic Namespace Filtering', () => {
     it( 'filters by includeNamespaces - multiple namespaces', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
-            includeNamespaces: [ 'testNamespaceA', 'testNamespaceB' ],
+            includeNamespaces: [ 'luksoNetwork', 'coingecko' ],
             excludeNamespaces: [],
             activateTags: []
         } )
@@ -41,9 +41,9 @@ describe( 'FlowMCP.filterArrayOfSchemas: Basic Namespace Filtering', () => {
         const namespaces = filteredArrayOfSchemas
             .map( ( schema ) => schema.namespace )
         
-        expect( namespaces ).toContain( 'testNamespaceA' )
-        expect( namespaces ).toContain( 'testNamespaceB' )
-        expect( namespaces ).not.toContain( 'testNamespaceC' )
+        expect( namespaces ).toContain( 'luksoNetwork' )
+        expect( namespaces ).toContain( 'coingecko' )
+        expect( namespaces ).not.toContain( 'testNamespace' )
     } )
 
 
@@ -75,17 +75,16 @@ describe( 'FlowMCP.filterArrayOfSchemas: Basic Namespace Filtering', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
-            excludeNamespaces: [ 'testNamespaceA', 'luksoNetwork' ],
+            excludeNamespaces: [ 'luksoNetwork', 'testNamespace' ],
             activateTags: []
         } )
 
         const namespaces = filteredArrayOfSchemas
             .map( ( schema ) => schema.namespace )
         
-        expect( namespaces ).not.toContain( 'testNamespaceA' )
         expect( namespaces ).not.toContain( 'luksoNetwork' )
-        expect( namespaces ).toContain( 'testNamespaceB' )
-        expect( namespaces ).toContain( 'testNamespaceC' )
+        expect( namespaces ).not.toContain( 'testNamespace' )
+        expect( namespaces ).toContain( 'coingecko' )
     } )
 
 

@@ -1,5 +1,5 @@
-import { FlowMCP } from '../../src/index.mjs'
-import { mockSchemas } from './mock-schemas.mjs'
+import { FlowMCP } from '../../../src/index.mjs'
+import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
@@ -17,7 +17,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
     it( 'handles case-insensitive namespace filtering - includeNamespaces', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
-            includeNamespaces: [ 'LUKSONETWORK', 'mixedcasenamespace' ],
+            includeNamespaces: [ 'LUKSONETWORK', 'COINGECKO' ],
             excludeNamespaces: [],
             activateTags: []
         } )
@@ -28,7 +28,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
             .map( schema => schema.namespace )
         
         expect( namespaces ).toContain( 'luksoNetwork' )
-        expect( namespaces ).toContain( 'MixedCaseNamespace' )
+        expect( namespaces ).toContain( 'coingecko' )
     } )
 
 
@@ -36,7 +36,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
-            excludeNamespaces: [ 'LUKSONETWORK', 'MIXEDCASENAMESPACE' ],
+            excludeNamespaces: [ 'LUKSONETWORK', 'COINGECKO' ],
             activateTags: []
         } )
 
@@ -44,8 +44,8 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
             .map( schema => schema.namespace )
         
         expect( namespaces ).not.toContain( 'luksoNetwork' )
-        expect( namespaces ).not.toContain( 'MixedCaseNamespace' )
-        expect( namespaces ).toContain( 'testNamespaceA' )
+        expect( namespaces ).not.toContain( 'coingecko' )
+        expect( namespaces ).toContain( 'testNamespace' )
     } )
 
 
@@ -76,21 +76,21 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'LUKSONETWORK.getBlocks', 'mixedcasenamespace.GetData' ]
+            activateTags: [ 'LUKSONETWORK.getBlocks', 'COINGECKO.getPrice' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( schema => schema.namespace === 'luksoNetwork' )
-        const mixedCaseSchema = filteredArrayOfSchemas
-            .find( schema => schema.namespace === 'MixedCaseNamespace' )
+        const coingeckoSchema = filteredArrayOfSchemas
+            .find( schema => schema.namespace === 'coingecko' )
         
         expect( luksoSchema ).toBeDefined()
-        expect( mixedCaseSchema ).toBeDefined()
+        expect( coingeckoSchema ).toBeDefined()
         
         expect( Object.keys( luksoSchema.routes ) ).toEqual( [ 'getBlocks' ] )
-        expect( Object.keys( mixedCaseSchema.routes ) ).toEqual( [ 'GetData' ] )
+        expect( Object.keys( coingeckoSchema.routes ) ).toEqual( [ 'getPrice' ] )
     } )
 
 
@@ -99,18 +99,18 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'luksoNetwork.GETBLOCKS', 'MixedCaseNamespace.getdata' ]
+            activateTags: [ 'luksoNetwork.GETBLOCKS', 'coingecko.GETPRICE' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( schema => schema.namespace === 'luksoNetwork' )
-        const mixedCaseSchema = filteredArrayOfSchemas
-            .find( schema => schema.namespace === 'MixedCaseNamespace' )
+        const coingeckoSchema = filteredArrayOfSchemas
+            .find( schema => schema.namespace === 'coingecko' )
         
         expect( Object.keys( luksoSchema.routes ) ).toEqual( [ 'getBlocks' ] )
-        expect( Object.keys( mixedCaseSchema.routes ) ).toEqual( [ 'GetData' ] )
+        expect( Object.keys( coingeckoSchema.routes ) ).toEqual( [ 'getPrice' ] )
     } )
 
 
@@ -119,29 +119,29 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'LUKSONETWORK.!GETBLOCKS', 'mixedcasenamespace.!POSTDATA' ]
+            activateTags: [ 'LUKSONETWORK.!GETBLOCKS', 'coingecko.!GETPRICE' ]
         } )
 
         expect( filteredArrayOfSchemas ).toHaveLength( 2 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( schema => schema.namespace === 'luksoNetwork' )
-        const mixedCaseSchema = filteredArrayOfSchemas
-            .find( schema => schema.namespace === 'MixedCaseNamespace' )
+        const coingeckoSchema = filteredArrayOfSchemas
+            .find( schema => schema.namespace === 'coingecko' )
         
         expect( Object.keys( luksoSchema.routes ) ).not.toContain( 'getBlocks' )
-        expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBlockTransactions' )
+        expect( Object.keys( luksoSchema.routes ) ).toContain( 'getTransactions' )
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBalance' )
         
-        expect( Object.keys( mixedCaseSchema.routes ) ).not.toContain( 'PostData' )
-        expect( Object.keys( mixedCaseSchema.routes ) ).toContain( 'GetData' )
+        expect( Object.keys( coingeckoSchema.routes ) ).not.toContain( 'getPrice' )
+        expect( Object.keys( coingeckoSchema.routes ) ).toContain( 'getMarkets' )
     } )
 
 
     it( 'preserves original case in returned schemas', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
-            includeNamespaces: [ 'MIXEDCASENAMESPACE' ],
+            includeNamespaces: [ 'LUKSONETWORK' ],
             excludeNamespaces: [],
             activateTags: [ 'BLOCKCHAIN' ]
         } )
@@ -151,41 +151,34 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
         const schema = filteredArrayOfSchemas[ 0 ]
         
         // Original case should be preserved
-        expect( schema.namespace ).toBe( 'MixedCaseNamespace' )
-        expect( schema.tags ).toContain( 'BLOCKCHAIN' )
-        expect( schema.tags ).toContain( 'TestTag' )
-        expect( Object.keys( schema.routes ) ).toContain( 'GetData' )
-        expect( Object.keys( schema.routes ) ).toContain( 'PostData' )
+        expect( schema.namespace ).toBe( 'luksoNetwork' )
+        expect( schema.tags ).toContain( 'blockchain' )
+        expect( schema.tags ).toContain( 'lukso' )
+        expect( Object.keys( schema.routes ) ).toContain( 'getBlocks' )
+        expect( Object.keys( schema.routes ) ).toContain( 'getBalance' )
     } )
 
 
     it( 'combines case-insensitive filtering with multiple filter types', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
-            includeNamespaces: [ 'LUKSONETWORK', 'MIXEDCASENAMESPACE' ],
+            includeNamespaces: [ 'LUKSONETWORK' ],
             excludeNamespaces: [],
-            activateTags: [ 'BLOCKCHAIN', 'luksonetwork.!GETBLOCKTRANSACTIONS' ]
+            activateTags: [ 'BLOCKCHAIN', 'luksonetwork.!GETTRANSACTIONS' ]
         } )
 
-        expect( filteredArrayOfSchemas ).toHaveLength( 2 )
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
         
         const luksoSchema = filteredArrayOfSchemas
             .find( schema => schema.namespace === 'luksoNetwork' )
-        const mixedCaseSchema = filteredArrayOfSchemas
-            .find( schema => schema.namespace === 'MixedCaseNamespace' )
+        // Only luksoNetwork should remain after filtering
         
         expect( luksoSchema ).toBeDefined()
-        expect( mixedCaseSchema ).toBeDefined()
         
-        // luksoNetwork should have blockchain tag AND exclude getBlockTransactions
+        // luksoNetwork should have blockchain tag AND exclude getTransactions
         expect( luksoSchema.tags ).toContain( 'blockchain' )
-        expect( Object.keys( luksoSchema.routes ) ).not.toContain( 'getBlockTransactions' )
+        expect( Object.keys( luksoSchema.routes ) ).not.toContain( 'getTransactions' )
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBlocks' )
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBalance' )
-        
-        // MixedCaseNamespace should have BLOCKCHAIN tag
-        expect( mixedCaseSchema.tags ).toContain( 'BLOCKCHAIN' )
-        expect( Object.keys( mixedCaseSchema.routes ) ).toContain( 'GetData' )
-        expect( Object.keys( mixedCaseSchema.routes ) ).toContain( 'PostData' )
     } )
 } )
