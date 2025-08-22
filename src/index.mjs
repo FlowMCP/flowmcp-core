@@ -183,6 +183,7 @@ class FlowMCP {
                             ? routeNameCmd.substring( 1 ) 
                             : routeNameCmd
                         
+                        // routeName is already lowercase from line 113
                         if( !existingRouteNames.includes( routeName ) ) {
                             errors.push( `Route '${routeName}' not found in namespace '${namespace}'` )
                         }

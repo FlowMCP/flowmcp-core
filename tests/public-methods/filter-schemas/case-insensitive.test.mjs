@@ -181,4 +181,104 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBlocks' )
         expect( Object.keys( luksoSchema.routes ) ).toContain( 'getBalance' )
     } )
+
+
+    it( 'handles camelCase route names correctly without double toLowerCase', () => {
+        // This test specifically checks the bug where route names were being
+        // converted to lowercase twice, causing "Route not found" errors
+        const testSchemas = [
+            {
+                'namespace': 'dexscreener',
+                'flowmcp': 'v1',
+                'tags': [ 'defi' ],
+                'routes': {
+                    'getLatestPairs': {},
+                    'getPairsByChain': {},
+                    'getSpecificPair': {}
+                },
+                'headers': {},
+                'requiredServerParams': []
+            },
+            {
+                'namespace': 'etherscan',
+                'flowmcp': 'v1',
+                'tags': [ 'blockchain' ],
+                'routes': {
+                    'getGasOracle': {},
+                    'estimateGasCost': {},
+                    'getAvailableChains': {}
+                },
+                'headers': {},
+                'requiredServerParams': []
+            }
+        ]
+
+        // Test with exact camelCase as would come from config
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: testSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [
+                'dexscreener.getLatestPairs',
+                'dexscreener.getPairsByChain',
+                'etherscan.getGasOracle',
+                'etherscan.estimateGasCost'
+            ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 2 )
+        
+        const dexSchema = filteredArrayOfSchemas
+            .find( schema => schema.namespace === 'dexscreener' )
+        const etherscanSchema = filteredArrayOfSchemas
+            .find( schema => schema.namespace === 'etherscan' )
+        
+        expect( dexSchema ).toBeDefined()
+        expect( etherscanSchema ).toBeDefined()
+        
+        // Should preserve original camelCase route names
+        expect( Object.keys( dexSchema.routes ) ).toContain( 'getLatestPairs' )
+        expect( Object.keys( dexSchema.routes ) ).toContain( 'getPairsByChain' )
+        expect( Object.keys( dexSchema.routes ) ).not.toContain( 'getSpecificPair' )
+        
+        expect( Object.keys( etherscanSchema.routes ) ).toContain( 'getGasOracle' )
+        expect( Object.keys( etherscanSchema.routes ) ).toContain( 'estimateGasCost' )
+        expect( Object.keys( etherscanSchema.routes ) ).not.toContain( 'getAvailableChains' )
+    } )
+
+
+    it( 'handles mixed case variations in activateTags', () => {
+        const testSchemas = [
+            {
+                'namespace': 'blocknative',
+                'flowmcp': 'v1',
+                'tags': [ 'gas' ],
+                'routes': {
+                    'getGasPrices': {},
+                    'getMempool': {}
+                },
+                'headers': {},
+                'requiredServerParams': []
+            }
+        ]
+
+        // Test with various case combinations
+        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+            arrayOfSchemas: testSchemas,
+            includeNamespaces: [],
+            excludeNamespaces: [],
+            activateTags: [
+                'BLOCKNATIVE.getGasPrices',  // all caps namespace, camelCase route
+                'blocknative.GETMEMPOOL'      // lowercase namespace, all caps route
+            ]
+        } )
+
+        expect( filteredArrayOfSchemas ).toHaveLength( 1 )
+        
+        const blockNativeSchema = filteredArrayOfSchemas[ 0 ]
+        
+        // Both routes should be included despite case differences
+        expect( Object.keys( blockNativeSchema.routes ) ).toContain( 'getGasPrices' )
+        expect( Object.keys( blockNativeSchema.routes ) ).toContain( 'getMempool' )
+    } )
 } )
