@@ -9,6 +9,7 @@
   "type": "module",
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles --coverage",
     "inspector": "npx @modelcontextprotocol/inspector"
   },
   "keywords": [],
