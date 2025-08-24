@@ -134,27 +134,27 @@ describe( 'FlowMCP.filterArrayOfSchemas: Route Filtering (schemaFilters)', () =>
     } )
 
 
-    it( 'returns empty array when namespace in schemaFilter does not exist', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 'nonExistentNamespace.someRoute' ]
-        } )
-
-        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    it( 'throws error when namespace in schemaFilter does not exist', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 'nonExistentNamespace.someRoute' ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 
-    it( 'returns empty array when route in schemaFilter does not exist', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 'luksoNetwork.nonExistentRoute' ]
-        } )
-
-        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    it( 'throws error when route in schemaFilter does not exist', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 'luksoNetwork.nonExistentRoute' ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 

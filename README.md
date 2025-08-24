@@ -169,6 +169,8 @@ FlowMCP.filterArrayOfSchemas({ arrayOfSchemas, includeNamespaces, excludeNamespa
 | `excludeNamespaces`| array   |         | Namespaces to exclude (ignored if include is specified)              | Yes      |
 | `activateTags`     | array   |         | Mixed array of tags and route filters (`tag` or `namespace.route`)   | Yes      |
 
+**Note**: If any `activateTags` are invalid (non-existent tags, routes, or namespaces), the method throws an error with detailed information about all invalid entries. This ensures fail-fast behavior and prevents partial filtering results.
+
 **Example**
 
 ```js
@@ -192,6 +194,21 @@ const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas({
 })
 
 console.log('Filtered schemas:', filteredArrayOfSchemas.length)
+
+// Error handling for invalid activateTags
+try {
+    FlowMCP.filterArrayOfSchemas({
+        arrayOfSchemas: schemas,
+        includeNamespaces: [],
+        excludeNamespaces: [],
+        activateTags: ['nonExistentTag', 'invalidNamespace.route']
+    })
+} catch (error) {
+    console.error(error.message)
+    // Output: Invalid activateTags found:
+    //         - Tag 'nonExistentTag' not found in any schema  
+    //         - Namespace 'invalidNamespace' not found in schemas
+}
 ```
 
 **Returns**

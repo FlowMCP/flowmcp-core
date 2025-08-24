@@ -110,20 +110,20 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
     } )
 
 
-    it( 'handles complex tag and route combinations that result in empty schemas', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 
-                'nonExistentTag',
-                'luksoNetwork.!getBlocks',
-                'luksoNetwork.!getTransactions',
-                'luksoNetwork.!getBalance'
-            ]
-        } )
-
-        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    it( 'throws error when tag does not exist in complex combinations', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 
+                    'nonExistentTag',
+                    'luksoNetwork.!getBlocks',
+                    'luksoNetwork.!getTransactions',
+                    'luksoNetwork.!getBalance'
+                ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 
@@ -148,7 +148,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
     } )
 
 
-    it( 'handles schemas with no tags when filterTags are specified', () => {
+    it( 'throws error when tag does not exist in schemas with no tags', () => {
         const schemasWithNoTags = [
             {
                 namespace: 'noTagsNamespace',
@@ -159,14 +159,14 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
             }
         ]
 
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: schemasWithNoTags,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 'someTag' ]
-        } )
-
-        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: schemasWithNoTags,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 'someTag' ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 
@@ -198,35 +198,27 @@ describe( 'FlowMCP.filterArrayOfSchemas: Complex Scenarios & Edge Cases', () => 
     } )
 
 
-    it( 'handles malformed activateTags gracefully', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 'malformed.tag.with.too.many.dots' ]
-        } )
-
-        // Invalid tags are ignored, so all schemas (except empty routes) should be returned
-        const expectedCount = mockSchemas
-            .filter( schema => Object.keys( schema.routes ).length > 0 ).length
-        
-        expect( filteredArrayOfSchemas ).toHaveLength( expectedCount )
+    it( 'throws error for malformed activateTags', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 'malformed.tag.with.too.many.dots' ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 
-    it( 'handles activateTags with only dots', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ '.', '..', '...' ]
-        } )
-
-        // Invalid tags are ignored, so all schemas (except empty routes) should be returned
-        const expectedCount = mockSchemas
-            .filter( schema => Object.keys( schema.routes ).length > 0 ).length
-        
-        expect( filteredArrayOfSchemas ).toHaveLength( expectedCount )
+    it( 'throws error for activateTags with only dots', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ '.', '..', '...' ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 

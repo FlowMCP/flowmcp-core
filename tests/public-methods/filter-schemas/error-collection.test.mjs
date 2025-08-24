@@ -2,26 +2,10 @@ import { FlowMCP } from '../../../src/index.mjs'
 import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
-describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
+describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Throwing', () => {
 
-    // Mock console.warn to capture error messages
-    let consoleWarnSpy
-    let originalWarn
-    
-    beforeEach( () => {
-        originalWarn = console.warn
-        consoleWarnSpy = []
-        console.warn = ( ...args ) => {
-            consoleWarnSpy.push( args.join( ' ' ) )
-        }
-    } )
-    
-    afterEach( () => {
-        console.warn = originalWarn
-    } )
-
-
-    it( 'collects errors for schemas with empty routes after filtering', () => {
+    it( 'filters out schemas with empty routes after filtering', () => {
+        // This test validates that when all routes are excluded, the schema is filtered out
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [ 'testNamespace' ],
@@ -29,97 +13,96 @@ describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
             activateTags: [ 'testNamespace.!testRoute' ]
         } )
 
+        // Should return empty array since all routes are excluded
         expect( filteredArrayOfSchemas ).toHaveLength( 0 )
-        expect( consoleWarnSpy.some( call => call.includes( "Schema 'testNamespace' has no routes after filtering" ) ) ).toBe( true )
     } )
 
 
-    it( 'collects errors for invalid activateTags syntax', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 
-                'validTag',
-                'invalid.tag.too.many.dots',
-                '.emptyNamespace',
-                'namespace.',
-                'also.valid.route'
-            ]
-        } )
-
-        expect( consoleWarnSpy.some( call => call.includes( "Invalid activateTags syntax: 'invalid.tag.too.many.dots'" ) ) ).toBe( true )
-        expect( consoleWarnSpy.some( call => call.includes( "Invalid activateTags syntax: '.emptyNamespace'" ) ) ).toBe( true )
-        expect( consoleWarnSpy.some( call => call.includes( "Invalid activateTags syntax: 'namespace.'" ) ) ).toBe( true )
-    } )
-
-
-    it( 'collects errors for non-existent namespaces in route filters', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 
-                'unknownNamespace.getBlocks',
-                'anotherUnknown.getData',
-                'luksoNetwork.getBlocks' // valid
-            ]
-        } )
-
-        expect( consoleWarnSpy.some( call => call.includes( "Namespace 'unknownNamespace' not found in schemas" ) ) ).toBe( true )
-        expect( consoleWarnSpy.some( call => call.includes( "Namespace 'anotherUnknown' not found in schemas" ) ) ).toBe( true )
-    } )
-
-
-    it( 'collects errors for non-existent routes in valid namespaces', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 
-                'luksoNetwork.unknownRoute',
-                'luksoNetwork.anotherUnknownRoute',
-                'testNamespace.nonExistentMethod',
-                'luksoNetwork.getBlocks' // valid
-            ]
-        } )
-
-        expect( consoleWarnSpy.some( call => call.includes( "Route 'unknownroute' not found in namespace 'luksoNetwork'" ) ) ).toBe( true )
-        expect( consoleWarnSpy.some( call => call.includes( "Route 'anotherunknownroute' not found in namespace 'luksoNetwork'" ) ) ).toBe( true )
-        expect( consoleWarnSpy.some( call => call.includes( "Route 'nonexistentmethod' not found in namespace 'testNamespace'" ) ) ).toBe( true )
-    } )
-
-
-    it( 'collects multiple error types together', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 
-                'crypto',                            // OK - valid tag
-                'invalid.syntax.too.many.dots',      // Error: invalid syntax
-                'unknownNamespace.getBlocks',        // Error: unknown namespace
-                'luksoNetwork.unknownRoute',         // Error: unknown route
-                'testNamespace.!testRoute'           // Will cause empty routes error
-            ]
-        } )
-
-        expect( consoleWarnSpy.some( call => 
-            call.includes( 'Filtering completed with warnings:' )
-        ) ).toBe( true )
+    it( 'throws error for invalid activateTags syntax', () => {
+        let caughtError
         
-        const warningCall = consoleWarnSpy.find( call => 
-            call.includes( 'Filtering completed with warnings:' )
-        )
-        
-        expect( warningCall ).toContain( "Invalid activateTags syntax: 'invalid.syntax.too.many.dots'" )
-        expect( warningCall ).toContain( "Namespace 'unknownNamespace' not found in schemas" )
-        expect( warningCall ).toContain( "Route 'unknownroute' not found in namespace 'luksoNetwork'" )
-        expect( warningCall ).toContain( "Schema 'testNamespace' has no routes after filtering" )
+        try {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 
+                    'blockchain',  // valid tag
+                    'invalid.tag.too.many.dots',
+                    '.emptyNamespace',
+                    'namespace.'
+                ]
+            } )
+        } catch( error ) {
+            caughtError = error
+        }
+
+        expect( caughtError ).toBeDefined()
+        expect( caughtError.message ).toContain( 'Invalid activateTags found' )
+        expect( caughtError.message ).toContain( "Invalid activateTags syntax: 'invalid.tag.too.many.dots'" )
+        expect( caughtError.message ).toContain( "Invalid activateTags syntax: '.emptyNamespace'" )
+        expect( caughtError.message ).toContain( "Invalid activateTags syntax: 'namespace.'" )
     } )
 
 
-    it( 'does not show warnings when no errors occur', () => {
+    it( 'throws error for non-existent namespaces in route filters', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 
+                    'unknownNamespace.getBlocks',
+                    'anotherUnknown.getData'
+                ]
+            } )
+        } ).toThrow( /Invalid activateTags found.*Namespace 'unknownNamespace' not found in schemas.*Namespace 'anotherUnknown' not found in schemas/s )
+    } )
+
+
+    it( 'throws error for non-existent routes in valid namespaces', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 
+                    'luksoNetwork.unknownRoute',
+                    'luksoNetwork.anotherUnknownRoute',
+                    'testNamespace.nonExistentMethod'
+                ]
+            } )
+        } ).toThrow( /Invalid activateTags found.*Route 'unknownroute' not found in namespace 'luksoNetwork'.*Route 'anotherunknownroute' not found in namespace 'luksoNetwork'.*Route 'nonexistentmethod' not found in namespace 'testNamespace'/s )
+    } )
+
+
+    it( 'throws error with multiple error types together', () => {
+        let caughtError
+        
+        try {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 
+                    'invalid.syntax.too.many.dots',      // Error: invalid syntax
+                    'unknownNamespace.getBlocks',        // Error: unknown namespace
+                    'luksoNetwork.unknownRoute'          // Error: unknown route
+                ]
+            } )
+        } catch( error ) {
+            caughtError = error
+        }
+
+        expect( caughtError ).toBeDefined()
+        expect( caughtError.message ).toContain( 'Invalid activateTags found' )
+        expect( caughtError.message ).toContain( "Invalid activateTags syntax: 'invalid.syntax.too.many.dots'" )
+        expect( caughtError.message ).toContain( "Namespace 'unknownNamespace' not found in schemas" )
+        expect( caughtError.message ).toContain( "Route 'unknownroute' not found in namespace 'luksoNetwork'" )
+    } )
+
+
+    it( 'does not throw errors when no invalid tags are provided', () => {
         const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
@@ -130,24 +113,22 @@ describe( 'FlowMCP.filterArrayOfSchemas: Error Collection & Reporting', () => {
             ]
         } )
 
+        // Should work without throwing errors
         expect( filteredArrayOfSchemas.length ).toBeGreaterThan( 0 )
-        expect( consoleWarnSpy ).toHaveLength( 0 )
     } )
 
 
-    it( 'shows filtered count in warning message', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 
-                'blockchain',
-                'unknownNamespace.route'  // Will cause warning
-            ]
-        } )
-
-        const successfulCount = filteredArrayOfSchemas.length
-        
-        expect( consoleWarnSpy.some( call => call.includes( `Filtered ${successfulCount} schemas successfully.` ) ) ).toBe( true )
+    it( 'throws error immediately and does not return partial results', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 
+                    'blockchain',                // Valid
+                    'unknownNamespace.route'     // Invalid - should cause error
+                ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 } )

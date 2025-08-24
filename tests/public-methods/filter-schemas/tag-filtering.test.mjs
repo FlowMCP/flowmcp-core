@@ -62,15 +62,15 @@ describe( 'FlowMCP.filterArrayOfSchemas: Tag Filtering', () => {
     } )
 
 
-    it( 'returns empty array when tag does not exist', () => {
-        const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-            arrayOfSchemas: mockSchemas,
-            includeNamespaces: [],
-            excludeNamespaces: [],
-            activateTags: [ 'nonExistentTag' ]
-        } )
-
-        expect( filteredArrayOfSchemas ).toHaveLength( 0 )
+    it( 'throws error when tag does not exist', () => {
+        expect( () => {
+            FlowMCP.filterArrayOfSchemas( {
+                arrayOfSchemas: mockSchemas,
+                includeNamespaces: [],
+                excludeNamespaces: [],
+                activateTags: [ 'nonExistentTag' ]
+            } )
+        } ).toThrow( 'Invalid activateTags found' )
     } )
 
 

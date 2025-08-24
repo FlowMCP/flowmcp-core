@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `FlowMCP.filterArrayOfSchemas()` method provides a comprehensive filtering system for MCP schemas with three parameter types and robust error handling.
+The `FlowMCP.filterArrayOfSchemas()` method provides a comprehensive filtering system for MCP schemas with three parameter types and fail-fast error handling. **Invalid activateTags will cause the method to throw errors immediately** instead of processing with warnings.
 
 ## Parameters
 
@@ -25,16 +25,30 @@ The `FlowMCP.filterArrayOfSchemas()` method provides a comprehensive filtering s
 
 ### `activateTags` (Array, Optional)
 - Mixed array supporting two syntax types:
-  1. **Schema Tags:** `"tagName"` - filters schemas by their tags array
-  2. **Route Filters:** `"namespace.routeName"` or `"namespace.!routeName"`
+  1. **Schema Tags:** `"tagName"` - filters schemas by their tags array (validated against available tags)
+  2. **Route Filters:** `"namespace.routeName"` or `"namespace.!routeName"` (validated against available routes)
 - **Empty array:** No tag/route filtering applied
 - **Case-insensitive matching**
+- **Validation:** All tags and routes are validated upfront - invalid entries cause immediate error
 
 ## Filter Pipeline
 
-The filtering process follows a strict 4-step pipeline:
+The filtering process follows a strict 4-step pipeline with upfront validation:
 
-### Step 1: Namespace Filtering
+### Step 0: Tag & Route Validation (ArrayOfSchemasFilter)
+```javascript
+// All activateTags are validated before any filtering begins
+// Uses ArrayOfSchemasFilter.validateTags() method
+const { validatedTags, validatedRoutes } = ArrayOfSchemasFilter
+    .validateTags( { arrayOfSchemas, activateTags } )
+
+// If any validation fails, method throws Error with all issues:
+// "Invalid activateTags found:
+// - Tag 'nonExistentTag' not found in any schema
+// - Route 'invalidroute' not found in namespace 'validNamespace'"
+```
+
+### Step 1: Namespace Filtering (ArrayOfSchemasFilter)
 ```javascript
 // Priority logic
 if( includeNamespaces.length > 0 ) {
@@ -49,39 +63,35 @@ if( includeNamespaces.length > 0 ) {
 }
 ```
 
-### Step 2: Schema Tag Filtering
+### Step 2: Tag & Route Filtering (ArrayOfSchemasFilter)
 ```javascript
-// Apply filterTags (activateTags without '.')
-if( filterTags.length === 0 ) {
-    return true // No tag filtering
-} else {
-    // OR logic: schema must have at least one matching tag
+// Uses pre-validated tags and routes from Step 0
+const { filteredArrayOfSchemas } = ArrayOfSchemasFilter
+    .filterByTagsAndRoutes( { 
+        arrayOfSchemas: filteredByNamespaces, 
+        validatedTags,          // Already validated simple tags
+        validatedRoutes,        // Already validated namespace.route patterns
+        originalActivateTagsCount: activateTags.length
+    } )
+
+// Tag filtering logic (OR logic):
+if( validatedTags.length > 0 ) {
     return schema.tags.some( tag => 
-        filterTags.includes( tag.toLowerCase() ) 
+        validatedTags.includes( tag.toLowerCase() ) 
     )
 }
-```
 
-### Step 3: Route-Level Filtering
-```javascript
-// Apply schemaFilters (activateTags with '.')
-if( Object.keys( schemaFilters ).length === 0 ) {
-    return schema // No route filtering
-} else {
-    // Only process schemas with namespace in schemaFilters
-    if( !schemaFilters.hasOwnProperty( schema.namespace ) ) {
-        return null // Schema filtered out
-    }
-    
+// Route filtering logic:
+if( Object.keys( validatedRoutes ).length > 0 ) {
     // Apply include/exclude route logic per namespace
-    return applyRouteFilters( schema, schemaFilters[ schema.namespace ] )
+    return applyRouteFilters( schema, validatedRoutes )
 }
 ```
 
-### Step 4: Error Collection & Cleanup
+### Step 3: Empty Schema Cleanup
 - Remove schemas with empty routes (after filtering)
-- Collect and report all accumulated errors
 - Return final filtered array
+- **No error collection** - all errors thrown in Step 0
 
 ## activateTags Syntax
 
@@ -135,45 +145,54 @@ if( Object.keys( schemaFilters ).length === 0 ) {
 
 ## Error Handling Strategy
 
-### Collection-Based Error Reporting
-**All errors are collected during processing and reported together at the end**
+### Fail-Fast Error Throwing
+**All errors are validated upfront and cause immediate method failure with comprehensive error messages**
 
 ### Error Categories
 
-#### 1. Empty Routes Schemas
+#### 1. Invalid activateTags Syntax
 ```javascript
-// Collected during Step 4
-"Schema 'emptyNamespace' has no routes after filtering"
-"Schema 'anotherNamespace' has no routes after filtering"
-```
-
-#### 2. Invalid activateTags Syntax
-```javascript
-// Collected during activateTags parsing
+// Detected in ArrayOfSchemasFilter.validateTags()
 "Invalid activateTags syntax: 'invalid.tag.too.many.dots'"
 "Invalid activateTags syntax: '.emptyNamespace'"
 "Invalid activateTags syntax: 'namespace.'"
 ```
 
-#### 3. Non-Existent References
+#### 2. Non-Existent Schema Tags
 ```javascript
-// Collected during route filtering
+// Detected during tag validation
+"Tag 'nonExistentTag' not found in any schema"
+"Tag 'invalidBlockchain' not found in any schema"
+```
+
+#### 3. Non-Existent Namespaces in Routes
+```javascript
+// Detected during route validation
 "Namespace 'unknownNamespace' not found in schemas"
-"Route 'unknownRoute' not found in namespace 'validNamespace'"
+"Namespace 'invalidApi' not found in schemas"
+```
+
+#### 4. Non-Existent Routes in Valid Namespaces
+```javascript
+// Detected during route validation  
+"Route 'unknownroute' not found in namespace 'validNamespace'"
+"Route 'invalidmethod' not found in namespace 'luksoNetwork'"
 ```
 
 ### Error Message Format
 ```javascript
+// All errors collected and thrown together
 if( errors.length > 0 ) {
-    const errorMessage = `
-Filtering completed with warnings:
-${errors.map( err => `- ${err}` ).join( '\n' )}
-
-Filtered ${result.length} schemas successfully.`
-    
-    console.warn( errorMessage )
+    const uniqueErrors = [ ...new Set( errors ) ]
+    const errorMessage = `Invalid activateTags found:\n${uniqueErrors.map( err => `- ${err}` ).join( '\n' )}`
+    throw new Error( errorMessage )
 }
 ```
+
+### Error Behavior
+- **No partial results:** Method fails completely on any invalid activateTag
+- **Comprehensive reporting:** All validation errors included in single error message  
+- **No warnings:** Method either succeeds completely or fails with error
 
 ## Complete Examples
 
@@ -207,21 +226,29 @@ const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
 // - ethereum: all routes except transfer
 ```
 
-### Example 3: Mixed Filtering with Errors
+### Example 3: Error Handling with Invalid Tags
 ```javascript
-const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
-    arrayOfSchemas: schemas,
-    includeNamespaces: [],
-    excludeNamespaces: [],
-    activateTags: [ 
-        'blockchain',                           // Valid schema tag
-        'unknownNamespace.getBlocks',          // Error: namespace not found
-        'luksoNetwork.unknownRoute',           // Error: route not found
-        'invalid.tag.too.many.dots',           // Error: invalid syntax
-        'luksoNetwork.!getTransactions'        // Valid route exclude
-    ]
-} )
-// Result: Schemas filtered + warning message with 3 collected errors
+try {
+    const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas( {
+        arrayOfSchemas: schemas,
+        includeNamespaces: [],
+        excludeNamespaces: [],
+        activateTags: [ 
+            'blockchain',                           // Valid schema tag
+            'unknownNamespace.getBlocks',          // Error: namespace not found
+            'luksoNetwork.unknownRoute',           // Error: route not found
+            'invalid.tag.too.many.dots',           // Error: invalid syntax
+            'luksoNetwork.!getTransactions'        // Valid route exclude
+        ]
+    } )
+} catch( error ) {
+    console.log( error.message )
+    // "Invalid activateTags found:
+    // - Invalid activateTags syntax: 'invalid.tag.too.many.dots'
+    // - Namespace 'unknownNamespace' not found in schemas  
+    // - Route 'unknownroute' not found in namespace 'luksoNetwork'"
+}
+// Result: Method throws error, no partial filtering performed
 ```
 
 ## Case-Insensitive Behavior
@@ -236,15 +263,21 @@ All string comparisons are performed in lowercase:
 
 ## Implementation Notes
 
+### Architecture
+- Core filtering logic delegated to `ArrayOfSchemasFilter` class
+- Two-phase architecture: upfront validation + clean filtering
+- Fail-fast error handling prevents partial results
+
 ### Performance Considerations
+- Pre-validation with Set-based lookups for O(1) tag/route checking
 - Filtering is performed in-memory with O(n) complexity per step
-- Large schema arrays (1000+ schemas) should complete within 1 second
+- Large schema arrays (1000+ schemas) should complete within 1 second  
 - Route filtering creates new schema objects (immutable approach)
 
 ### Validation Requirements  
-- Input validation before processing begins
-- Parameter type checking (arrays, strings)
-- Empty array handling per specification
+- Comprehensive upfront validation via `ArrayOfSchemasFilter.validateTags()`
+- Parameter type checking (arrays, strings) via `Validation.filterArrayOfSchemas()`
+- All activateTags validated against available tags and routes before processing
 
 ### Return Value
 ```javascript

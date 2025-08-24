@@ -54,7 +54,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
             arrayOfSchemas: mockSchemas,
             includeNamespaces: [],
             excludeNamespaces: [],
-            activateTags: [ 'BLOCKCHAIN', 'testtag' ]
+            activateTags: [ 'BLOCKCHAIN', 'TEST' ]  // Both are valid tags in mockSchemas
         } )
 
         expect( filteredArrayOfSchemas.length ).toBeGreaterThan( 0 )
@@ -64,7 +64,7 @@ describe( 'FlowMCP.filterArrayOfSchemas: Case-Insensitive Behavior', () => {
                 const hasBlockchainTag = schema.tags
                     .some( tag => tag.toLowerCase() === 'blockchain' )
                 const hasTestTag = schema.tags
-                    .some( tag => tag.toLowerCase() === 'testtag' )
+                    .some( tag => tag.toLowerCase() === 'test' )
                 
                 expect( hasBlockchainTag || hasTestTag ).toBe( true )
             } )
