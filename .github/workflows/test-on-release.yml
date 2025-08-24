@@ -1,11 +1,18 @@
 name: Run Tests on Release
 
 on: push
+# optional sinnvoll: auch PRs prüfen
+# on:
+#   push:
+#   pull_request:
+
+permissions:
+  contents: read
+  id-token: write   # << nötig für OIDC
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,5 +25,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Jest tests
-        run: NODE_OPTIONS="--experimental-vm-modules" npx jest
+      - name: Run Jest tests (with coverage)
+        run: |
+          NODE_OPTIONS="--experimental-vm-modules" npx jest --coverage
+
+      - name: Upload coverage to Codecov (OIDC)
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ./coverage/lcov.info      # Jest legt diese Datei standardmäßig an
+          fail_ci_if_error: true
+          flags: unittests
+        # optional: auch hochladen, wenn Tests fehlschlagen
+        # if: ${{ always() }}
