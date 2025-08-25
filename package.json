@@ -10,6 +10,7 @@
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles --coverage",
+    "test:coverage:src": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles --coverage --collectCoverageFrom='src/**/*.mjs'",
     "inspector": "npx @modelcontextprotocol/inspector"
   },
   "keywords": [],

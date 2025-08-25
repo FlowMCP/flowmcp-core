@@ -180,7 +180,7 @@ class FlowMCP {
 
 
     static getZodInterfaces( { schema } ) {
-        Validation.schema( { schema } )
+        Validation.schema( { schema, strict: false } )
         const result = Interface.from( { schema } )
 
         return result

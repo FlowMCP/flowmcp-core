@@ -176,8 +176,8 @@ class Validation {
         const { namespace } = schema
         if( namespace == '' ) {
             struct['messages'].push( `${id}.namespace: Namespace is empty` )
-        } else if( !/^[a-zA-Z]+$/.test( id ) ) {
-            struct['messages'].push( `${id}.namespace: Namespace "${namespace}" is not valid. Must be a string with only letters` )
+        } else if( !/^[a-zA-Z][a-zA-Z0-9]*$/.test( namespace ) ) {
+            struct['messages'].push( `${id}.namespace: Namespace "${namespace}" is not valid. Must start with a letter and contain only letters and numbers` )
         } else {
             id = `Schema.${namespace}`
         }
@@ -400,7 +400,8 @@ class Validation {
 
                 if( item['position']['value'] !== '{{USER_PARAM}}' ) { return messages }
                 if( !Object.hasOwn( item, 'z' ) ) {
-                   messages.push( `Missing z for ${key} ${index}` )
+                   messages.push( `Missing z for parameter at index ${index}` )
+                   return messages
                 }
 
                 const { types: { z: zTypes } } = Validation.getTypes()
@@ -583,7 +584,7 @@ class Validation {
 
 
     static #validateValue( { key, value, expectedType, id } ) {
-        if( !value ) {
+        if( value === null || value === undefined ) {
             return {
                 status: false,
                 messages: [ `${id}: Value for ${key} is undefined` ]
