@@ -1,14 +1,10 @@
-name: Run Tests on Release
+name: Run Tests on Push
 
 on: push
-# optional sinnvoll: auch PRs prüfen
-# on:
-#   push:
-#   pull_request:
 
 permissions:
   contents: read
-  id-token: write   # << nötig für OIDC
+  id-token: write
 
 jobs:
   test:
@@ -32,8 +28,6 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           use_oidc: true
-          files: ./coverage/lcov.info      # Jest legt diese Datei standardmäßig an
+          files: ./coverage/lcov.info
           fail_ci_if_error: true
           flags: unittests
-        # optional: auch hochladen, wenn Tests fehlschlagen
-        # if: ${{ always() }}
