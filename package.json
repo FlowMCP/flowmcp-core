@@ -3,6 +3,12 @@
   "version": "1.4.2",
   "description": "FlowMCP is a framework for adapting existing web APIs into a standardized Model Context Protocol (MCP) interface, enabling structured, testable, and semantically consistent access for AI systems.",
   "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./legacy": "./src/legacy/index.mjs",
+    "./v1": "./src/v1/index.mjs",
+    "./v2": "./src/v2/index.mjs"
+  },
   "directories": {
     "test": "tests"
   },

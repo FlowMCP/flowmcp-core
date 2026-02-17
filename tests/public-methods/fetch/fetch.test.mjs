@@ -1,5 +1,5 @@
 import { FlowMCP } from '../../../src/index.mjs'
-import { Fetch } from '../../../src/task/Fetch.mjs'
+import { Fetch } from '../../../src/v1/task/Fetch.mjs'
 import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 
