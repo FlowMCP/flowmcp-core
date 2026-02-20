@@ -165,6 +165,14 @@ class MainValidator {
                 messages
             } )
         }
+
+        if( route['preload'] !== undefined ) {
+            MainValidator.#validatePreload( {
+                preload: route['preload'],
+                prefix: `${prefix}.preload`,
+                messages
+            } )
+        }
     }
 
 
@@ -213,10 +221,101 @@ class MainValidator {
             messages.push( `${prefix}.mimeType: Must be one of ${allowedMimeTypes.join( ', ' )}` )
         }
 
-        if( output['schema'] !== undefined ) {
-            if( typeof output['schema'] !== 'object' || Array.isArray( output['schema'] ) ) {
-                messages.push( `${prefix}.schema: Must be a plain object` )
-            }
+        if( !output['schema'] ) {
+            messages.push( `${prefix}.schema: Missing required field` )
+        } else if( typeof output['schema'] !== 'object' || Array.isArray( output['schema'] ) ) {
+            messages.push( `${prefix}.schema: Must be a plain object` )
+        } else {
+            MainValidator.#validateSchema( {
+                schema: output['schema'],
+                mimeType: output['mimeType'],
+                prefix: `${prefix}.schema`,
+                messages
+            } )
+        }
+    }
+
+
+    static #validatePreload( { preload, prefix, messages } ) {
+        if( typeof preload !== 'object' || Array.isArray( preload ) || preload === null ) {
+            messages.push( `${prefix}: Must be a plain object` )
+
+            return
+        }
+
+        if( preload['enabled'] === undefined ) {
+            messages.push( `${prefix}.enabled: Missing required field` )
+        } else if( typeof preload['enabled'] !== 'boolean' ) {
+            messages.push( `${prefix}.enabled: Must be type "boolean"` )
+        }
+
+        if( preload['ttl'] === undefined ) {
+            messages.push( `${prefix}.ttl: Missing required field` )
+        } else if( typeof preload['ttl'] !== 'number' || !Number.isInteger( preload['ttl'] ) || preload['ttl'] <= 0 ) {
+            messages.push( `${prefix}.ttl: Must be a positive integer` )
+        }
+
+        if( preload['description'] !== undefined && typeof preload['description'] !== 'string' ) {
+            messages.push( `${prefix}.description: Must be type "string"` )
+        }
+    }
+
+
+    static #validateSchema( { schema, mimeType, prefix, messages } ) {
+        const allowedTypes = [ 'string', 'number', 'boolean', 'object', 'array' ]
+
+        if( !schema['type'] ) {
+            messages.push( `${prefix}.type: Missing required field` )
+
+            return
+        }
+
+        if( !allowedTypes.includes( schema['type'] ) ) {
+            messages.push( `${prefix}.type: Must be one of ${allowedTypes.join( ', ' )}` )
+
+            return
+        }
+
+        MainValidator.#validateMimeTypeConsistency( {
+            mimeType,
+            schemaType: schema['type'],
+            format: schema['format'],
+            prefix,
+            messages
+        } )
+
+        if( schema['properties'] !== undefined && schema['type'] !== 'object' ) {
+            messages.push( `${prefix}.properties: Only valid when type is "object"` )
+        }
+
+        if( schema['items'] !== undefined && schema['type'] !== 'array' ) {
+            messages.push( `${prefix}.items: Only valid when type is "array"` )
+        }
+    }
+
+
+    static #validateMimeTypeConsistency( { mimeType, schemaType, format, prefix, messages } ) {
+        if( !mimeType ) {
+            return
+        }
+
+        const mimeRules = {
+            'application/json': [ 'object', 'array' ],
+            'image/png': [ 'string' ],
+            'text/plain': [ 'string' ]
+        }
+
+        const allowed = mimeRules[ mimeType ]
+        if( !allowed ) {
+            return
+        }
+
+        if( !allowed.includes( schemaType ) ) {
+            messages.push( `${prefix}.type: Incompatible with mimeType "${mimeType}", expected ${allowed.join( ' or ' )}` )
+        }
+
+        if( mimeType === 'image/png' && schemaType === 'string' && format !== 'base64' ) {
+            messages.push( `${prefix}.format: Must be "base64" when mimeType is "image/png"` )
         }
     }
 }

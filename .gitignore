@@ -3,3 +3,5 @@ old
 schemas
 ai
 coverage
+.env
+*.env

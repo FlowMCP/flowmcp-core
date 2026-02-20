@@ -288,6 +288,269 @@ describe( 'MainValidator', () => {
         } )
 
 
+        test( 'fails when output schema is missing', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getStatus: {
+                        method: 'GET',
+                        path: '/status',
+                        description: 'Returns status.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'application/json'
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasSchemaError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'output.schema' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasSchemaError ).toBe( true )
+        } )
+
+
+        test( 'fails when output schema type is missing', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getStatus: {
+                        method: 'GET',
+                        path: '/status',
+                        description: 'Returns status.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'application/json',
+                            schema: {}
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasTypeError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'schema.type' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasTypeError ).toBe( true )
+        } )
+
+
+        test( 'fails when mimeType and schema type are incompatible', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getStatus: {
+                        method: 'GET',
+                        path: '/status',
+                        description: 'Returns status.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'application/json',
+                            schema: { type: 'string' }
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasConsistencyError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'Incompatible' ) && msg.includes( 'application/json' )
+
+                    return match
+                } )
+
+            expect( hasConsistencyError ).toBe( true )
+        } )
+
+
+        test( 'fails when image/png schema lacks base64 format', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getChart: {
+                        method: 'GET',
+                        path: '/chart',
+                        description: 'Returns chart.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'image/png',
+                            schema: { type: 'string' }
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasFormatError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'format' ) && msg.includes( 'base64' )
+
+                    return match
+                } )
+
+            expect( hasFormatError ).toBe( true )
+        } )
+
+
+        test( 'passes valid image/png output with base64 format', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getChart: {
+                        method: 'GET',
+                        path: '/chart',
+                        description: 'Returns chart.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'image/png',
+                            schema: { type: 'string', format: 'base64' }
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'passes valid text/plain output', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getSource: {
+                        method: 'GET',
+                        path: '/source',
+                        description: 'Returns source code.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'text/plain',
+                            schema: { type: 'string' }
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'fails when properties declared on non-object type', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getStatus: {
+                        method: 'GET',
+                        path: '/status',
+                        description: 'Returns status.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'application/json',
+                            schema: {
+                                type: 'array',
+                                properties: { id: { type: 'string' } },
+                                items: { type: 'string' }
+                            }
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasPropsError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'properties' ) && msg.includes( 'object' )
+
+                    return match
+                } )
+
+            expect( hasPropsError ).toBe( true )
+        } )
+
+
+        test( 'fails when items declared on non-array type', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getStatus: {
+                        method: 'GET',
+                        path: '/status',
+                        description: 'Returns status.',
+                        parameters: [],
+                        output: {
+                            mimeType: 'application/json',
+                            schema: {
+                                type: 'object',
+                                items: { type: 'string' }
+                            }
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasItemsError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'items' ) && msg.includes( 'array' )
+
+                    return match
+                } )
+
+            expect( hasItemsError ).toBe( true )
+        } )
+
+
+        test( 'passes when output is omitted from route', () => {
+            const { status, messages } = MainValidator
+                .validate( { main: validMain } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
         test( 'passes a fully featured main block', () => {
             const main = {
                 namespace: 'testfull',
@@ -322,6 +585,253 @@ describe( 'MainValidator', () => {
 
             const { status, messages } = MainValidator
                 .validate( { main } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+    } )
+
+
+    describe( 'preload validation', () => {
+        test( 'passes a valid preload block', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: {
+                            enabled: true,
+                            ttl: 604800,
+                            description: 'All locations (~760KB)'
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'passes preload without optional description', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: {
+                            enabled: true,
+                            ttl: 86400
+                        }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'fails when preload is not a plain object', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: 'invalid'
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasPreloadError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'preload' ) && msg.includes( 'plain object' )
+
+                    return match
+                } )
+
+            expect( hasPreloadError ).toBe( true )
+        } )
+
+
+        test( 'fails when preload.enabled is missing', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: { ttl: 86400 }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasEnabledError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'preload.enabled' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasEnabledError ).toBe( true )
+        } )
+
+
+        test( 'fails when preload.enabled is not boolean', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: { enabled: 'yes', ttl: 86400 }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasTypeError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'preload.enabled' ) && msg.includes( 'boolean' )
+
+                    return match
+                } )
+
+            expect( hasTypeError ).toBe( true )
+        } )
+
+
+        test( 'fails when preload.ttl is missing', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: { enabled: true }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasTtlError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'preload.ttl' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasTtlError ).toBe( true )
+        } )
+
+
+        test( 'fails when preload.ttl is not a positive integer', () => {
+            const testCases = [ 0, -100, 3.5, 'one week' ]
+
+            testCases
+                .forEach( ( ttlValue ) => {
+                    const main = {
+                        ...validMain,
+                        routes: {
+                            getLocations: {
+                                method: 'GET',
+                                path: '/locations.json',
+                                description: 'All locations.',
+                                parameters: [],
+                                preload: { enabled: true, ttl: ttlValue }
+                            }
+                        }
+                    }
+
+                    const { status, messages } = MainValidator
+                        .validate( { main } )
+
+                    expect( status ).toBe( false )
+
+                    const hasTtlError = messages
+                        .some( ( msg ) => {
+                            const match = msg.includes( 'preload.ttl' ) && msg.includes( 'positive integer' )
+
+                            return match
+                        } )
+
+                    expect( hasTtlError ).toBe( true )
+                } )
+        } )
+
+
+        test( 'fails when preload.description is not a string', () => {
+            const main = {
+                ...validMain,
+                routes: {
+                    getLocations: {
+                        method: 'GET',
+                        path: '/locations.json',
+                        description: 'All locations.',
+                        parameters: [],
+                        preload: { enabled: true, ttl: 86400, description: 123 }
+                    }
+                }
+            }
+
+            const { status, messages } = MainValidator
+                .validate( { main } )
+
+            expect( status ).toBe( false )
+
+            const hasDescError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'preload.description' ) && msg.includes( 'string' )
+
+                    return match
+                } )
+
+            expect( hasDescError ).toBe( true )
+        } )
+
+
+        test( 'passes when preload is omitted from route', () => {
+            const { status, messages } = MainValidator
+                .validate( { main: validMain } )
 
             expect( status ).toBe( true )
             expect( messages ).toEqual( [] )

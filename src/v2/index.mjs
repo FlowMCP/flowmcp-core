@@ -5,6 +5,7 @@ import { SharedListResolver } from './task/SharedListResolver.mjs'
 import { LibraryLoader } from './task/LibraryLoader.mjs'
 import { HandlerFactory } from './task/HandlerFactory.mjs'
 import { LegacyAdapter } from './task/LegacyAdapter.mjs'
+import { OutputSchemaGenerator } from './task/OutputSchemaGenerator.mjs'
 import { Pipeline } from './task/Pipeline.mjs'
 import { Fetch } from './task/Fetch.mjs'
 
@@ -96,6 +97,14 @@ class FlowMCP {
 
         return { allowlist }
     }
+
+
+    static generateOutputSchema( { response, mimeType } ) {
+        const { output } = OutputSchemaGenerator
+            .generate( { response, mimeType } )
+
+        return { output }
+    }
 }
 
 
@@ -109,3 +118,4 @@ export { HandlerFactory } from './task/HandlerFactory.mjs'
 export { LegacyAdapter } from './task/LegacyAdapter.mjs'
 export { Pipeline } from './task/Pipeline.mjs'
 export { Fetch } from './task/Fetch.mjs'
+export { OutputSchemaGenerator } from './task/OutputSchemaGenerator.mjs'
