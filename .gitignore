@@ -1,6 +1,6 @@
 node_modules
 old
-schemas
+/schemas
 ai
 coverage
 .env
