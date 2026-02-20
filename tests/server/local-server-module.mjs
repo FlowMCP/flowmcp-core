@@ -1,8 +1,8 @@
 import fs from 'fs'
 import { SchemaImporter } from 'schemaimporter'
 
-import { FlowMCP } from '../../src/index.mjs'
-// import { LocalServer } from '../../src/index.mjs'
+import { FlowMCP } from '../../src/v1/index.mjs'
+// import { LocalServer } from '../../src/v1/index.mjs'
 import { LocalServer } from 'flowmcpServers'
 
 

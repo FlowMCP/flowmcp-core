@@ -1,6 +1,6 @@
 import { SchemaImporter } from 'schemaimporter'
 
-import { FlowMCP } from '../../src/index.mjs'
+import { FlowMCP } from '../../src/v1/index.mjs'
 
 
 describe( 'MCP schema validation and Zod interface extraction', () => {

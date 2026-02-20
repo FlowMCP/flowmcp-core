@@ -8,24 +8,18 @@ v1 continues to work via `flowmcp-core/legacy` or `flowmcp-core/v1`.
 
 ## Import Changes
 
-### Before (v1)
+### Default (v2)
 
 ```javascript
 import { FlowMCP } from 'flowmcp-core'
 ```
 
-### After (v2)
+### Explicit Version
 
 ```javascript
-import { FlowMCP } from 'flowmcp-core/v2'
-```
-
-### Backward Compatible
-
-```javascript
-// Still works - re-exports v1
-import { FlowMCP } from 'flowmcp-core'
-import { FlowMCP } from 'flowmcp-core/legacy'
+import { FlowMCP } from 'flowmcp-core/v2'    // same as default
+import { FlowMCP } from 'flowmcp-core/v1'    // legacy v1 API
+import { FlowMCP } from 'flowmcp-core/legacy' // legacy v1 API
 ```
 
 ## Schema Format

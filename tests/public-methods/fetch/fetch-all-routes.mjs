@@ -1,4 +1,4 @@
-import { FlowMCP } from '../../src/index.mjs'
+import { FlowMCP } from '../../src/v1/index.mjs'
 import { SchemaImporter } from 'schemaimporter'
 import { Print } from './helpers/Print.mjs'
 

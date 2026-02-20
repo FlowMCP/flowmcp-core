@@ -43,65 +43,53 @@ A comprehensive framework for adapting existing web APIs into a standardized Mod
 ## Quick Start
 
 ```js
-import { FlowMCP } from './src/index.mjs'
+import { FlowMCP } from 'flowmcp-core'
 
-// Basic schema definition
-const schema = {
-    namespace: 'cryptocompare',
-    root: 'https://api.cryptocompare.com',
-    headers: {
-        'User-Agent': 'FlowMCP/1.3.0'
-    },
-    tags: ['crypto', 'price'],
-    routes: {
-        getCurrentPrice: {
-            requestMethod: 'GET',
-            route: '/data/price?fsym={{USER_PARAM}}&tsyms={{USER_PARAM}}',
-            parameters: [
-                {
-                    position: { location: 'query', key: 'fsym', value: '{{USER_PARAM}}' },
-                    z: 'string()'
-                },
-                {
-                    position: { location: 'query', key: 'tsyms', value: '{{USER_PARAM}}' },
-                    z: 'string()'
-                }
-            ],
-            modifiers: []
-        }
-    }
-}
+// Load and validate a v2 schema
+const { status, main, handlerMap } = await FlowMCP.loadSchema( {
+    filePath: './schemas/cryptocompare.mjs'
+} )
 
-// Validate schema structure
-const validation = FlowMCP.validateSchema({ schema })
-if (!validation.status) {
-    console.error('Schema validation failed:', validation.messages)
-    process.exit(1)
+if( !status ) {
+    console.error( 'Schema loading failed' )
 }
 
 // Execute API request
-const userParams = { fsym: 'BTC', tsyms: 'USD' }
-const serverParams = {}
-const result = await FlowMCP.fetch({ 
-    schema, 
-    userParams, 
-    serverParams, 
-    routeName: 'getCurrentPrice' 
-})
+const result = await FlowMCP.fetch( {
+    main,
+    handlerMap,
+    userParams: { fsym: 'BTC', tsyms: 'USD' },
+    serverParams: {},
+    routeName: 'getCurrentPrice'
+} )
 
-if (result.status) {
-    console.log('Bitcoin price:', result.dataAsString)
-} else {
-    console.error('API request failed:', result.messages)
+console.log( 'Bitcoin price:', result.dataAsString )
+```
+
+### v2 Schema Format
+
+```js
+export const main = {
+    namespace: 'cryptocompare',
+    name: 'CryptoCompare',
+    description: 'CryptoCompare price API',
+    version: '2.0.0',
+    docs: [ 'https://min-api.cryptocompare.com/documentation' ],
+    tags: [ 'crypto', 'price' ],
+    root: 'https://min-api.cryptocompare.com',
+    requiredServerParams: [],
+    routes: {
+        getCurrentPrice: {
+            method: 'GET',
+            path: '/data/price',
+            description: 'Get current price for a cryptocurrency pair.',
+            parameters: {
+                fsym: { type: 'string', required: true, description: 'From symbol (e.g. BTC)' },
+                tsyms: { type: 'string', required: true, description: 'To symbols (e.g. USD,EUR)' }
+            }
+        }
+    }
 }
-
-// Generate test cases
-const tests = FlowMCP.getAllTests({ schema })
-console.log('Available tests:', tests.length)
-
-// Create Zod interfaces
-const zodInterfaces = FlowMCP.getZodInterfaces({ schema })
-console.log('Generated interfaces:', Object.keys(zodInterfaces))
 ```
 
 ## Methods
@@ -958,10 +946,9 @@ console.log(`Filtered ${filteredArrayOfSchemas.length} schemas in ${endTime - st
 
 For additional documentation and examples:
 
-- **[spec/v.1.2.2-spec.md](./spec/v.1.2.2-spec.md)** - Official FlowMCP Technical Standard (Version 1.2.2) with complete schema structure specification
-- **[FILTERING.md](./FILTERING.md)** - Comprehensive technical specification for the `filterArrayOfSchemas()` method with detailed filter pipeline documentation, syntax rules, and error handling strategies
+- **[MIGRATION.md](./MIGRATION.md)** - Migration guide from v1 to v2
+- **[FILTERING.md](./FILTERING.md)** - Technical specification for `filterArrayOfSchemas()` (v1 API)
 - **tests/** - Comprehensive test suite with examples for all functionality
-- **schemas/** - Example schema definitions for popular APIs
 
 ## License
 

@@ -1,4 +1,4 @@
-import { FlowMCP } from '../../../src/index.mjs'
+import { FlowMCP } from '../../../src/v1/index.mjs'
 import { mockSchemas, mockServerParams } from '../helpers/mock-schemas.mjs'
 import { createMockServer } from '../helpers/mock-server.mjs'
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals'
-import { FlowMCP } from '../../../src/index.mjs'
+import { FlowMCP } from '../../../src/v1/index.mjs'
 
 
 describe( 'FlowMCP.filterArrayOfSchemas: Issue #36 Edge Case', () => {

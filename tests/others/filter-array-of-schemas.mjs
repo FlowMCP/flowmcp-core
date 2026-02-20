@@ -1,5 +1,5 @@
 import { SchemaImporter } from 'schemaimporter'
-import { FlowMCP } from '../../src/index.mjs'
+import { FlowMCP } from '../../src/v1/index.mjs'
 
 const arrayOfSchemas = await SchemaImporter
     .loadFromFolder( {

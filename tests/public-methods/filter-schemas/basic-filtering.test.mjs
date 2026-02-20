@@ -1,4 +1,4 @@
-import { FlowMCP } from '../../../src/index.mjs'
+import { FlowMCP } from '../../../src/v1/index.mjs'
 import { mockSchemas } from '../helpers/mock-schemas.mjs'
 
 

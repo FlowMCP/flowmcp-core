@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { FlowMCP } from '../../src/index.mjs'
+import { FlowMCP } from '../../src/v1/index.mjs'
 
 
 const server = new McpServer( {
