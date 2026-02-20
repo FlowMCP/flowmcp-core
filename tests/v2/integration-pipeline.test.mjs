@@ -3,6 +3,7 @@ import { Pipeline } from '../../src/v2/task/Pipeline.mjs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
+import { existsSync } from 'node:fs'
 
 const __filename = fileURLToPath( import.meta.url )
 const __dirname = dirname( __filename )
@@ -11,9 +12,12 @@ const schemasBase = join( __dirname, '..', '..', '..', 'flowmcp-schemas', 'schem
 const listsDir = join( schemasBase, '_lists' )
 const fixtureSchemas = join( __dirname, 'fixtures', 'schemas' )
 
+const hasSiblingSchemas = existsSync( schemasBase )
+const describeWithSchemas = hasSiblingSchemas ? describe : describe.skip
+
 
 describe( 'Pipeline integration with real schemas', () => {
-    describe( 'simple schema (no handlers)', () => {
+    describeWithSchemas( 'simple schema (no handlers)', () => {
         test( 'loads coincap/assets.mjs without handlers', async () => {
             const filePath = join( schemasBase, 'coincap', 'assets.mjs' )
             const result = await Pipeline
@@ -46,7 +50,7 @@ describe( 'Pipeline integration with real schemas', () => {
     } )
 
 
-    describe( 'handlers-clean schema (postRequest only)', () => {
+    describeWithSchemas( 'handlers-clean schema (postRequest only)', () => {
         test( 'loads solscan-io/getChainInfo.mjs with postRequest handler', async () => {
             const filePath = join( schemasBase, 'solscan-io', 'getChainInfo.mjs' )
             const result = await Pipeline
@@ -87,7 +91,7 @@ describe( 'Pipeline integration with real schemas', () => {
     } )
 
 
-    describe( 'handlers-imports schema (sharedLists)', () => {
+    describeWithSchemas( 'handlers-imports schema (sharedLists)', () => {
         test( 'loads moralis-com/eth/priceApi.mjs and resolves evmChains', async () => {
             const filePath = join( schemasBase, 'moralis-com', 'eth', 'priceApi.mjs' )
             const result = await Pipeline
@@ -122,7 +126,7 @@ describe( 'Pipeline integration with real schemas', () => {
     } )
 
 
-    describe( 'executeRequest schema', () => {
+    describeWithSchemas( 'executeRequest schema', () => {
         test( 'loads chainlist/chainlist.mjs with executeRequest handlers', async () => {
             const filePath = join( schemasBase, 'chainlist', 'chainlist.mjs' )
             const result = await Pipeline
@@ -171,7 +175,7 @@ describe( 'Pipeline integration with real schemas', () => {
     } )
 
 
-    describe( 'main validator validates real schemas', () => {
+    describeWithSchemas( 'main validator validates real schemas', () => {
         test( 'validates that solscan main block has all required fields', async () => {
             const filePath = join( schemasBase, 'solscan-io', 'getChainInfo.mjs' )
             const result = await Pipeline
@@ -193,7 +197,7 @@ describe( 'Pipeline integration with real schemas', () => {
     } )
 
 
-    describe( 'pipeline return shape consistency', () => {
+    describeWithSchemas( 'pipeline return shape consistency', () => {
         test( 'all successful loads return the same shape', async () => {
             const schemaPaths = [
                 join( schemasBase, 'coincap', 'assets.mjs' ),
