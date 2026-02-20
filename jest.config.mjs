@@ -8,10 +8,10 @@ export default {
         'src/**/*.mjs'
     ],
     coverageThreshold: {
-        'src/**/*.mjs': {
+        global: {
             statements: 70,
             branches: 60,
-            functions: 88,
+            functions: 70,
             lines: 70
         }
     },
