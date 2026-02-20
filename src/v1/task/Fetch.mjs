@@ -148,8 +148,10 @@ class Fetch {
 
         let query = ''
         query += new URLSearchParams( iterate ).toString()
-        query = query !== '' ? '?' + query : ''
-        url += query
+        if( query !== '' ) {
+            const separator = url.includes( '?' ) ? '&' : '?'
+            url += separator + query
+        }
 
         modifiers = modifiers
             .reduce( ( acc, { phase, handlerName }, index ) => {

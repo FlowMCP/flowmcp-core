@@ -178,7 +178,8 @@ class Fetch {
 
         const queryString = new URLSearchParams( queryParams ).toString()
         if( queryString ) {
-            url += `?${queryString}`
+            const separator = url.includes( '?' ) ? '&' : '?'
+            url += `${separator}${queryString}`
         }
 
         return { url, method, headers, body }
