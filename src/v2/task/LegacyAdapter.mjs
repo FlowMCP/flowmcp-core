@@ -3,6 +3,10 @@ class LegacyAdapter {
         const schema = module['schema'] || null
         const main = module['main'] || null
 
+        if( main && main['version'] && main['version'].startsWith( '3.' ) ) {
+            return { isLegacy: false, format: 'v3' }
+        }
+
         if( main && main['version'] && main['version'].startsWith( '2.' ) ) {
             return { isLegacy: false, format: 'v2' }
         }

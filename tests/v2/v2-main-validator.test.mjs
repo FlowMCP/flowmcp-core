@@ -65,7 +65,14 @@ describe( 'MainValidator', () => {
             expect( messages ).toContain( 'main.namespace: Missing required field' )
             expect( messages ).toContain( 'main.version: Missing required field' )
             expect( messages ).toContain( 'main.root: Missing required field' )
-            expect( messages ).toContain( 'main.routes: Missing required field' )
+            const hasToolsError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'main.tools' ) && msg.includes( 'at least one primitive' )
+
+                    return match
+                } )
+
+            expect( hasToolsError ).toBe( true )
         } )
 
 
@@ -162,7 +169,7 @@ describe( 'MainValidator', () => {
 
             const hasRouteError = messages
                 .some( ( msg ) => {
-                    const match = msg.includes( 'Maximum 8 routes' )
+                    const match = msg.includes( 'Maximum 8 tools' )
 
                     return match
                 } )

@@ -1,5 +1,5 @@
 class HandlerFactory {
-    static create( { handlersFn, sharedLists, libraries, routeNames } ) {
+    static create( { handlersFn, sharedLists, libraries, routeNames, resources } ) {
         const raw = handlersFn
             ? handlersFn( { sharedLists, libraries } )
             : {}
@@ -8,13 +8,15 @@ class HandlerFactory {
             throw new Error( 'HandlerFactory: Factory must return a plain object' )
         }
 
+        const resourceNames = Object.keys( resources || {} )
+        const allValidKeys = [ ...routeNames, ...resourceNames ]
         const messages = []
         const handlerKeys = Object.keys( raw )
 
         handlerKeys
             .forEach( ( key ) => {
-                if( !routeNames.includes( key ) ) {
-                    messages.push( `HandlerFactory: Handler key "${key}" does not match any route` )
+                if( !allValidKeys.includes( key ) ) {
+                    messages.push( `HandlerFactory: Handler key "${key}" does not match any route or resource` )
                 }
             } )
 
@@ -36,7 +38,32 @@ class HandlerFactory {
                 }
             } )
 
-        return { handlerMap }
+        const resourceHandlerMap = {}
+
+        resourceNames
+            .forEach( ( resourceName ) => {
+                const resourceHandler = raw[ resourceName ]
+
+                if( !resourceHandler || typeof resourceHandler !== 'object' ) {
+                    return
+                }
+
+                resourceHandlerMap[ resourceName ] = {}
+
+                const queryNames = Object.keys( resourceHandler )
+
+                queryNames
+                    .forEach( ( queryName ) => {
+                        const queryHandler = resourceHandler[ queryName ] || {}
+                        const { postRequest } = queryHandler
+
+                        resourceHandlerMap[ resourceName ][ queryName ] = {
+                            postRequest: typeof postRequest === 'function' ? postRequest : null
+                        }
+                    } )
+            } )
+
+        return { handlerMap, resourceHandlerMap }
     }
 }
 

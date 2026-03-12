@@ -5,6 +5,12 @@ import { SharedListResolver } from './SharedListResolver.mjs'
 import { LibraryLoader } from './LibraryLoader.mjs'
 import { HandlerFactory } from './HandlerFactory.mjs'
 import { LegacyAdapter } from './LegacyAdapter.mjs'
+import { SkillLoader } from './SkillLoader.mjs'
+import { SkillValidator } from './SkillValidator.mjs'
+import { ResourceValidator } from './ResourceValidator.mjs'
+import { ResourceExecutor } from './ResourceExecutor.mjs'
+
+import { dirname } from 'node:path'
 
 
 class Pipeline {
@@ -15,19 +21,20 @@ class Pipeline {
             .scan( { filePath } )
 
         if( !scanStatus ) {
-            return {
+            return Pipeline.#buildResult( {
                 status: false,
                 messages: scanMessages,
-                main: null,
-                handlerMap: {},
-                sharedLists: {},
-                libraries: {},
                 warnings
-            }
+            } )
         }
 
         const loaded = await SchemaLoader
             .load( { filePath } )
+
+        if( loaded['messages'] && loaded['messages'].length > 0 ) {
+            loaded['messages']
+                .forEach( ( msg ) => { warnings.push( msg ) } )
+        }
 
         const { isLegacy, format } = LegacyAdapter
             .detect( { module: loaded } )
@@ -54,15 +61,12 @@ class Pipeline {
             .validate( { main } )
 
         if( !validStatus ) {
-            return {
+            return Pipeline.#buildResult( {
                 status: false,
                 messages: validMessages,
                 main,
-                handlerMap: {},
-                sharedLists: {},
-                libraries: {},
                 warnings
-            }
+            } )
         }
 
         const sharedListRefs = main['sharedLists'] || []
@@ -83,19 +87,123 @@ class Pipeline {
             libraries = loaded['libraries']
         }
 
-        const routeNames = Object.keys( main['routes'] )
-        const { handlerMap } = HandlerFactory
-            .create( { handlersFn, sharedLists, libraries, routeNames } )
+        const toolsKey = main['tools'] ? 'tools' : 'routes'
+        const toolsObj = main[ toolsKey ] || {}
+        const routeNames = Object.keys( toolsObj )
 
-        return {
+        const { handlerMap, resourceHandlerMap } = HandlerFactory
+            .create( { handlersFn, sharedLists, libraries, routeNames, resources: main['resources'] } )
+
+        let skills = {}
+        let skillMessages = []
+
+        if( main['skills'] ) {
+            const schemaDir = dirname( filePath )
+
+            const { status: skillLoadStatus, skills: loadedSkills, messages: loadMessages } = await SkillLoader
+                .load( { skillDefinitions: main['skills'], schemaDir } )
+
+            if( !skillLoadStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: loadMessages,
+                    main,
+                    handlerMap,
+                    sharedLists,
+                    libraries,
+                    warnings
+                } )
+            }
+
+            const toolNames = Object.keys( toolsObj )
+            const resourceNames = Object.keys( main['resources'] || {} )
+
+            const { status: skillValidStatus, messages: skillValidMessages } = SkillValidator
+                .validate( { skills: loadedSkills, tools: toolNames, resources: resourceNames } )
+
+            if( !skillValidStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: skillValidMessages,
+                    main,
+                    handlerMap,
+                    sharedLists,
+                    libraries,
+                    warnings
+                } )
+            }
+
+            skills = loadedSkills
+            skillMessages = skillValidMessages
+        }
+
+        let resourceValidationMessages = []
+
+        if( main['resources'] ) {
+            const { status: resValidStatus, messages: resValidMessages } = ResourceValidator
+                .validate( { resources: main['resources'] } )
+
+            if( !resValidStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: resValidMessages,
+                    main,
+                    handlerMap,
+                    sharedLists,
+                    libraries,
+                    warnings
+                } )
+            }
+
+            resourceValidationMessages = resValidMessages
+        }
+
+        return Pipeline.#buildResult( {
             status: true,
             messages: [],
             main,
             handlerMap,
+            resourceHandlerMap,
             sharedLists,
             libraries,
+            skills,
+            warnings
+        } )
+    }
+
+
+    static async executeResource( { resourceDefinition, queryName, userParams, handlerMap } ) {
+        const { struct } = await ResourceExecutor
+            .execute( { resourceDefinition, queryName, userParams, handlerMap } )
+
+        return { struct }
+    }
+
+
+    static #buildResult( {
+        status = false,
+        messages = [],
+        main = null,
+        handlerMap = {},
+        resourceHandlerMap = {},
+        sharedLists = {},
+        libraries = {},
+        skills = {},
+        warnings = []
+    } ) {
+        const result = {
+            status,
+            messages,
+            main,
+            handlerMap,
+            resourceHandlerMap,
+            sharedLists,
+            libraries,
+            skills,
             warnings
         }
+
+        return result
     }
 }
 

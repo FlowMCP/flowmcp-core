@@ -20,7 +20,15 @@ class MainValidator {
             return { status: false, messages }
         }
 
-        MainValidator.#validateRoutes( { main, messages } )
+        MainValidator.#validateTools( { main, messages } )
+
+        if( main[ 'resources' ] !== undefined ) {
+            MainValidator.#validateResources( { main, messages } )
+        }
+
+        if( main[ 'skills' ] !== undefined ) {
+            MainValidator.#validateSkills( { main, messages } )
+        }
 
         const status = messages.length === 0
 
@@ -29,13 +37,18 @@ class MainValidator {
 
 
     static #validateTopLevel( { main, messages } ) {
+        const hasTools = main[ 'tools' ] !== undefined && main[ 'tools' ] !== null
+        const hasRoutes = main[ 'routes' ] !== undefined && main[ 'routes' ] !== null
+        const hasResources = main[ 'resources' ] !== undefined && main[ 'resources' ] !== null
+        const hasSkills = main[ 'skills' ] !== undefined && main[ 'skills' ] !== null
+        const toolsKey = hasTools ? 'tools' : 'routes'
+
         const requiredFields = [
             [ 'namespace', 'string' ],
             [ 'name',      'string' ],
             [ 'description', 'string' ],
             [ 'version',   'string' ],
-            [ 'root',      'string' ],
-            [ 'routes',    'object' ]
+            [ 'root',      'string' ]
         ]
 
         requiredFields
@@ -47,61 +60,74 @@ class MainValidator {
                 }
             } )
 
+        if( !hasTools && !hasRoutes ) {
+            if( !hasResources && !hasSkills ) {
+                messages.push( 'main.tools: Missing required field — at least one primitive (tools, resources, or skills) is required' )
+            }
+        } else {
+            const toolsValue = main[ toolsKey ]
+            if( typeof toolsValue !== 'object' || Array.isArray( toolsValue ) ) {
+                messages.push( `main.${toolsKey}: Must be type "object"` )
+            }
+        }
+
         if( messages.length > 0 ) {
             return
         }
 
         const namespacePattern = /^[a-z]+$/
-        if( !namespacePattern.test( main['namespace'] ) ) {
-            messages.push( `main.namespace: Must match pattern /^[a-z]+$/, got "${main['namespace']}"` )
+        if( !namespacePattern.test( main[ 'namespace' ] ) ) {
+            messages.push( `main.namespace: Must match pattern /^[a-z]+$/, got "${main[ 'namespace' ]}"` )
         }
 
-        const versionPattern = /^2\.\d+\.\d+$/
-        if( !versionPattern.test( main['version'] ) ) {
-            messages.push( `main.version: Must match pattern /^2\\.\\d+\\.\\d+$/, got "${main['version']}"` )
+        const versionPattern = /^(2|3)\.\d+\.\d+$/
+        if( !versionPattern.test( main[ 'version' ] ) ) {
+            messages.push( `main.version: Must match pattern /^(2|3)\\.\\d+\\.\\d+$/, got "${main[ 'version' ]}"` )
         }
 
-        if( !main['root'].startsWith( 'https://' ) ) {
-            messages.push( `main.root: Must start with "https://", got "${main['root']}"` )
+        if( !main[ 'root' ].startsWith( 'https://' ) ) {
+            messages.push( `main.root: Must start with "https://", got "${main[ 'root' ]}"` )
         }
 
-        if( main['root'].endsWith( '/' ) ) {
-            messages.push( `main.root: Must not end with trailing slash` )
+        if( main[ 'root' ].endsWith( '/' ) ) {
+            messages.push( 'main.root: Must not end with trailing slash' )
         }
 
-        const routeNames = Object.keys( main['routes'] )
-        if( routeNames.length > 8 ) {
-            messages.push( `main.routes: Maximum 8 routes allowed, got ${routeNames.length}` )
+        if( hasTools || hasRoutes ) {
+            const toolNames = Object.keys( main[ toolsKey ] )
+            if( toolNames.length > 8 ) {
+                messages.push( `main.${toolsKey}: Maximum 8 tools allowed, got ${toolNames.length}` )
+            }
         }
 
-        if( main['tags'] !== undefined ) {
-            if( !Array.isArray( main['tags'] ) ) {
+        if( main[ 'tags' ] !== undefined ) {
+            if( !Array.isArray( main[ 'tags' ] ) ) {
                 messages.push( 'main.tags: Must be an array' )
             }
         }
 
-        if( main['requiredServerParams'] !== undefined ) {
-            if( !Array.isArray( main['requiredServerParams'] ) ) {
+        if( main[ 'requiredServerParams' ] !== undefined ) {
+            if( !Array.isArray( main[ 'requiredServerParams' ] ) ) {
                 messages.push( 'main.requiredServerParams: Must be an array' )
             }
         }
 
-        if( main['requiredLibraries'] !== undefined ) {
-            if( !Array.isArray( main['requiredLibraries'] ) ) {
+        if( main[ 'requiredLibraries' ] !== undefined ) {
+            if( !Array.isArray( main[ 'requiredLibraries' ] ) ) {
                 messages.push( 'main.requiredLibraries: Must be an array' )
             }
         }
 
-        if( main['sharedLists'] !== undefined ) {
-            if( !Array.isArray( main['sharedLists'] ) ) {
+        if( main[ 'sharedLists' ] !== undefined ) {
+            if( !Array.isArray( main[ 'sharedLists' ] ) ) {
                 messages.push( 'main.sharedLists: Must be an array' )
             } else {
-                main['sharedLists']
+                main[ 'sharedLists' ]
                     .forEach( ( entry, index ) => {
-                        if( !entry['ref'] ) {
+                        if( !entry[ 'ref' ] ) {
                             messages.push( `main.sharedLists[${index}].ref: Missing required field` )
                         }
-                        if( !entry['version'] ) {
+                        if( !entry[ 'version' ] ) {
                             messages.push( `main.sharedLists[${index}].version: Missing required field` )
                         }
                     } )
@@ -110,17 +136,123 @@ class MainValidator {
     }
 
 
-    static #validateRoutes( { main, messages } ) {
-        const { routes } = main
-        const routeNames = Object.keys( routes )
+    static #validateTools( { main, messages } ) {
+        const hasTools = main[ 'tools' ] !== undefined
+        const hasRoutes = main[ 'routes' ] !== undefined
+        const toolsKey = hasTools ? 'tools' : 'routes'
+        const toolsObj = main[ toolsKey ]
 
-        routeNames
-            .forEach( ( routeName ) => {
-                const route = routes[ routeName ]
-                const prefix = `main.routes.${routeName}`
+        if( !toolsObj || typeof toolsObj !== 'object' ) {
+            return
+        }
 
-                MainValidator.#validateSingleRoute( { route, prefix, messages } )
+        const toolNames = Object.keys( toolsObj )
+
+        toolNames
+            .forEach( ( toolName ) => {
+                const tool = toolsObj[ toolName ]
+                const prefix = `main.${toolsKey}.${toolName}`
+
+                MainValidator.#validateSingleRoute( { route: tool, prefix, messages } )
             } )
+    }
+
+
+    static #validateResources( { main, messages } ) {
+        const { resources } = main
+
+        if( typeof resources !== 'object' || Array.isArray( resources ) || resources === null ) {
+            messages.push( 'main.resources: Must be a plain object' )
+
+            return
+        }
+
+        const resourceNames = Object.keys( resources )
+
+        if( resourceNames.length > 2 ) {
+            messages.push( `main.resources: Maximum 2 resources allowed, got ${resourceNames.length}` )
+        }
+
+        resourceNames
+            .forEach( ( resourceName ) => {
+                const resource = resources[ resourceName ]
+                const prefix = `main.resources.${resourceName}`
+
+                MainValidator.#validateSingleResource( { resource, prefix, messages } )
+            } )
+    }
+
+
+    static #validateSingleResource( { resource, prefix, messages } ) {
+        if( resource[ 'source' ] === undefined || resource[ 'source' ] === null ) {
+            messages.push( `${prefix}.source: Missing required field` )
+        } else if( typeof resource[ 'source' ] !== 'string' ) {
+            messages.push( `${prefix}.source: Must be type "string"` )
+        } else if( resource[ 'source' ] !== 'sqlite' ) {
+            messages.push( `${prefix}.source: Must be "sqlite", got "${resource[ 'source' ]}"` )
+        }
+
+        if( resource[ 'description' ] === undefined || resource[ 'description' ] === null ) {
+            messages.push( `${prefix}.description: Missing required field` )
+        } else if( typeof resource[ 'description' ] !== 'string' ) {
+            messages.push( `${prefix}.description: Must be type "string"` )
+        }
+
+        if( resource[ 'database' ] === undefined || resource[ 'database' ] === null ) {
+            messages.push( `${prefix}.database: Missing required field` )
+        } else if( typeof resource[ 'database' ] !== 'string' ) {
+            messages.push( `${prefix}.database: Must be type "string"` )
+        } else if( !resource[ 'database' ].endsWith( '.db' ) ) {
+            messages.push( `${prefix}.database: Must end with ".db", got "${resource[ 'database' ]}"` )
+        }
+
+        if( resource[ 'queries' ] === undefined || resource[ 'queries' ] === null ) {
+            messages.push( `${prefix}.queries: Missing required field` )
+        } else if( typeof resource[ 'queries' ] !== 'object' || Array.isArray( resource[ 'queries' ] ) ) {
+            messages.push( `${prefix}.queries: Must be a plain object` )
+        } else {
+            const queryNames = Object.keys( resource[ 'queries' ] )
+
+            if( queryNames.length > 4 ) {
+                messages.push( `${prefix}.queries: Maximum 4 queries allowed, got ${queryNames.length}` )
+            }
+        }
+    }
+
+
+    static #validateSkills( { main, messages } ) {
+        const { skills } = main
+
+        if( typeof skills !== 'object' || Array.isArray( skills ) || skills === null ) {
+            messages.push( 'main.skills: Must be a plain object' )
+
+            return
+        }
+
+        const skillNames = Object.keys( skills )
+
+        if( skillNames.length > 4 ) {
+            messages.push( `main.skills: Maximum 4 skills allowed, got ${skillNames.length}` )
+        }
+
+        skillNames
+            .forEach( ( skillName ) => {
+                const skill = skills[ skillName ]
+                const prefix = `main.skills.${skillName}`
+
+                MainValidator.#validateSingleSkill( { skill, prefix, messages } )
+            } )
+    }
+
+
+    static #validateSingleSkill( { skill, prefix, messages } ) {
+        if( skill[ 'file' ] === undefined || skill[ 'file' ] === null ) {
+            messages.push( `${prefix}.file: Missing required field` )
+        } else if( typeof skill[ 'file' ] !== 'string' ) {
+            messages.push( `${prefix}.file: Must be type "string"` )
+        } else if( !skill[ 'file' ].endsWith( '.mjs' ) ) {
+            messages.push( `${prefix}.file: Must end with ".mjs", got "${skill[ 'file' ]}"` )
+        }
     }
 
 
