@@ -9,6 +9,8 @@ import { SkillLoader } from './SkillLoader.mjs'
 import { SkillValidator } from './SkillValidator.mjs'
 import { ResourceValidator } from './ResourceValidator.mjs'
 import { ResourceExecutor } from './ResourceExecutor.mjs'
+import { AgentManifestLoader } from './AgentManifestLoader.mjs'
+import { AgentManifestValidator } from './AgentManifestValidator.mjs'
 
 import { dirname } from 'node:path'
 
@@ -177,6 +179,48 @@ class Pipeline {
             .execute( { resourceDefinition, queryName, userParams, handlerMap } )
 
         return { struct }
+    }
+
+
+    static async loadAgent( { manifestPath, listsDir } ) {
+        // 1. Load manifest using AgentManifestLoader
+        const { status: loadStatus, messages: loadMessages, manifest } = await AgentManifestLoader
+            .load( { manifestPath } )
+
+        if( !loadStatus ) {
+            return { status: false, messages: loadMessages, manifest: null, prompts: {} }
+        }
+
+        // 2. Validate manifest using AgentManifestValidator
+        const { status: validStatus, messages: validMessages } = AgentManifestValidator
+            .validate( { manifest } )
+
+        if( !validStatus ) {
+            return { status: false, messages: validMessages, manifest, prompts: {} }
+        }
+
+        // 3. Load prompts if manifest has prompts array
+        let prompts = {}
+        const promptPaths = manifest['prompts'] || []
+
+        if( promptPaths.length > 0 ) {
+            const { dirname: manifestDir } = await import( 'node:path' )
+                .then( ( m ) => {
+                    const dir = m.dirname( manifestPath )
+                    return { dirname: dir }
+                } )
+
+            const { status: promptStatus, messages: promptMessages, prompts: loadedPrompts } = await AgentManifestLoader
+                .loadPrompts( { promptPaths, manifestDir } )
+
+            if( !promptStatus ) {
+                return { status: false, messages: promptMessages, manifest, prompts: {} }
+            }
+
+            prompts = loadedPrompts
+        }
+
+        return { status: true, messages: [], manifest, prompts }
     }
 
 

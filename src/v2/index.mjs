@@ -8,6 +8,9 @@ import { LegacyAdapter } from './task/LegacyAdapter.mjs'
 import { OutputSchemaGenerator } from './task/OutputSchemaGenerator.mjs'
 import { Pipeline } from './task/Pipeline.mjs'
 import { Fetch } from './task/Fetch.mjs'
+import { IdResolver } from './task/IdResolver.mjs'
+import { AgentManifestLoader } from './task/AgentManifestLoader.mjs'
+import { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
 
 
 class FlowMCP {
@@ -105,6 +108,30 @@ class FlowMCP {
 
         return { output }
     }
+
+
+    static async loadAgent( { manifestPath, listsDir } ) {
+        const result = await Pipeline
+            .loadAgent( { manifestPath, listsDir } )
+
+        return result
+    }
+
+
+    static validateAgentManifest( { manifest } ) {
+        const { status, messages } = AgentManifestValidator
+            .validate( { manifest } )
+
+        return { status, messages }
+    }
+
+
+    static parseId( { id } ) {
+        const result = IdResolver
+            .parse( { id } )
+
+        return result
+    }
 }
 
 
@@ -123,3 +150,8 @@ export { SkillLoader } from './task/SkillLoader.mjs'
 export { SkillValidator } from './task/SkillValidator.mjs'
 export { ResourceValidator } from './task/ResourceValidator.mjs'
 export { ResourceExecutor } from './task/ResourceExecutor.mjs'
+export { IdResolver } from './task/IdResolver.mjs'
+export { PromptLoader } from './task/PromptLoader.mjs'
+export { AgentManifestLoader } from './task/AgentManifestLoader.mjs'
+export { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
+export { AgentTestRunner } from './task/AgentTestRunner.mjs'

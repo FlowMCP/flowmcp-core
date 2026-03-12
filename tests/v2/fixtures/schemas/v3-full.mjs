@@ -15,6 +15,11 @@ export const main = {
                     position: { key: 'address', value: '{{USER_PARAM}}', location: 'query' },
                     z: { primitive: 'string()', options: [ 'min(1)' ] }
                 }
+            ],
+            tests: [
+                { _description: 'Test 1', address: '0x1234567890abcdef1234567890abcdef12345678' },
+                { _description: 'Test 2', address: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd' },
+                { _description: 'Test 3', address: '0x0000000000000000000000000000000000000001' }
             ]
         }
     },

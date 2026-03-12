@@ -9,7 +9,12 @@ export const main = {
             method: 'GET',
             path: '/status',
             description: 'Returns the API status.',
-            parameters: []
+            parameters: [],
+            tests: [
+                { _description: 'Test 1' },
+                { _description: 'Test 2' },
+                { _description: 'Test 3' }
+            ]
         }
     },
     skills: {

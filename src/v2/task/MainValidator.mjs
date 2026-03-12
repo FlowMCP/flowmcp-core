@@ -1,26 +1,27 @@
 class MainValidator {
     static validate( { main } ) {
         const messages = []
+        const warnings = []
 
         if( main === undefined || main === null ) {
             messages.push( 'main: Missing export' )
 
-            return { status: false, messages }
+            return { status: false, messages, warnings }
         }
 
         if( typeof main !== 'object' || Array.isArray( main ) ) {
             messages.push( 'main: Must be a plain object' )
 
-            return { status: false, messages }
+            return { status: false, messages, warnings }
         }
 
         MainValidator.#validateTopLevel( { main, messages } )
 
         if( messages.length > 0 ) {
-            return { status: false, messages }
+            return { status: false, messages, warnings }
         }
 
-        MainValidator.#validateTools( { main, messages } )
+        MainValidator.#validateTools( { main, messages, warnings } )
 
         if( main[ 'resources' ] !== undefined ) {
             MainValidator.#validateResources( { main, messages } )
@@ -32,7 +33,7 @@ class MainValidator {
 
         const status = messages.length === 0
 
-        return { status, messages }
+        return { status, messages, warnings }
     }
 
 
@@ -136,7 +137,7 @@ class MainValidator {
     }
 
 
-    static #validateTools( { main, messages } ) {
+    static #validateTools( { main, messages, warnings } ) {
         const hasTools = main[ 'tools' ] !== undefined
         const hasRoutes = main[ 'routes' ] !== undefined
         const toolsKey = hasTools ? 'tools' : 'routes'
@@ -147,6 +148,8 @@ class MainValidator {
         }
 
         const toolNames = Object.keys( toolsObj )
+        const version = main[ 'version' ] || ''
+        const isV3 = version.startsWith( '3' )
 
         toolNames
             .forEach( ( toolName ) => {
@@ -154,7 +157,25 @@ class MainValidator {
                 const prefix = `main.${toolsKey}.${toolName}`
 
                 MainValidator.#validateSingleRoute( { route: tool, prefix, messages } )
+                MainValidator.#validateTestCount( { tool, toolName, isV3, messages, warnings } )
             } )
+    }
+
+
+    static #validateTestCount( { tool, toolName, isV3, messages, warnings } ) {
+        const tests = tool[ 'tests' ]
+        const count = Array.isArray( tests ) ? tests.length : 0
+        const minTests = 3
+
+        if( count >= minTests ) {
+            return
+        }
+
+        if( isV3 ) {
+            messages.push( `TST001 error   ${toolName}: Must have at least ${minTests} tests (found ${count})` )
+        } else {
+            warnings.push( `TST001 warning ${toolName}: Should have at least ${minTests} tests (found ${count})` )
+        }
     }
 
 
