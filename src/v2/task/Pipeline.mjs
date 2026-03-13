@@ -11,6 +11,7 @@ import { ResourceValidator } from './ResourceValidator.mjs'
 import { ResourceExecutor } from './ResourceExecutor.mjs'
 import { ResourceDatabaseManager } from './ResourceDatabaseManager.mjs'
 import { PromptValidator } from './PromptValidator.mjs'
+import { PromptLoader } from './PromptLoader.mjs'
 import { AgentManifestLoader } from './AgentManifestLoader.mjs'
 import { AgentManifestValidator } from './AgentManifestValidator.mjs'
 
@@ -162,8 +163,9 @@ class Pipeline {
             resourceValidationMessages = resValidMessages
 
             const schemaRef = main['namespace'] || 'unknown'
+            const schemaDir = dirname( filePath )
             const { status: dbInitStatus, messages: dbInitMessages } = await ResourceDatabaseManager
-                .initialize( { resources: main['resources'], schemaRef } )
+                .initialize( { resources: main['resources'], schemaRef, schemaDir } )
 
             if( !dbInitStatus ) {
                 dbInitMessages
@@ -174,8 +176,15 @@ class Pipeline {
         let prompts = {}
 
         if( main['prompts'] ) {
-            const { status: promptValidStatus, messages: promptValidMessages } = PromptValidator
-                .validate( { prompts: main['prompts'] } )
+            const namespace = main['namespace'] || null
+
+            const { status: promptValidStatus, messages: promptValidMessages, warnings: promptWarnings } = PromptValidator
+                .validate( { prompts: main['prompts'], namespace } )
+
+            if( promptWarnings && promptWarnings.length > 0 ) {
+                promptWarnings
+                    .forEach( ( w ) => { warnings.push( w ) } )
+            }
 
             if( !promptValidStatus ) {
                 return Pipeline.#buildResult( {
@@ -189,7 +198,24 @@ class Pipeline {
                 } )
             }
 
-            prompts = main['prompts']
+            const schemaDir = dirname( filePath )
+
+            const { status: promptLoadStatus, messages: promptLoadMessages, prompts: loadedPrompts } = await PromptLoader
+                .loadProviderPrompts( { prompts: main['prompts'], schemaDir } )
+
+            if( !promptLoadStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: promptLoadMessages,
+                    main,
+                    handlerMap,
+                    sharedLists,
+                    libraries,
+                    warnings
+                } )
+            }
+
+            prompts = loadedPrompts
         }
 
         return Pipeline.#buildResult( {

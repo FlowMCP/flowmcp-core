@@ -1,4 +1,8 @@
 class ResourceValidator {
+    static #VALID_SOURCES = [ 'sqlite', 'markdown' ]
+    static #VALID_ORIGINS = [ 'inline', 'project', 'global' ]
+
+
     static validate( { resources } ) {
         const messages = []
 
@@ -50,12 +54,60 @@ class ResourceValidator {
 
 
     static #validateSingleResource( { resource, prefix, messages } ) {
-        if( resource['source'] === undefined || resource['source'] === null ) {
+        const source = resource['source']
+
+        if( source === undefined || source === null ) {
             messages.push( `${prefix}.source: Missing required field` )
-        } else if( resource['source'] !== 'sqlite' ) {
-            messages.push( `${prefix}.source: Must be "sqlite", got "${resource['source']}"` )
+
+            return
         }
 
+        if( !ResourceValidator.#VALID_SOURCES.includes( source ) ) {
+            messages.push( `${prefix}.source: Must be "sqlite" or "markdown", got "${source}"` )
+        }
+
+        if( source === 'markdown' ) {
+            ResourceValidator.#validateMarkdownResource( { resource, prefix, messages } )
+
+            return
+        }
+
+        ResourceValidator.#validateSqliteResource( { resource, prefix, messages } )
+    }
+
+
+    static #validateMarkdownResource( { resource, prefix, messages } ) {
+        if( resource['origin'] === undefined || resource['origin'] === null ) {
+            messages.push( `${prefix}.origin: Missing required field` )
+        } else if( !ResourceValidator.#VALID_ORIGINS.includes( resource['origin'] ) ) {
+            messages.push( `${prefix}.origin: Must be "inline", "project", or "global", got "${resource['origin']}"` )
+        }
+
+        if( resource['name'] === undefined || resource['name'] === null ) {
+            messages.push( `${prefix}.name: Missing required field` )
+        } else if( typeof resource['name'] !== 'string' || resource['name'].trim() === '' ) {
+            messages.push( `${prefix}.name: Must be a non-empty string` )
+        } else if( !resource['name'].endsWith( '.md' ) ) {
+            messages.push( `${prefix}.name: Must end with ".md", got "${resource['name']}"` )
+        }
+
+        if( resource['description'] === undefined || resource['description'] === null ) {
+            messages.push( `${prefix}.description: Missing required field` )
+        } else if( typeof resource['description'] !== 'string' || resource['description'].trim() === '' ) {
+            messages.push( `${prefix}.description: Must be a non-empty string` )
+        }
+
+        if( resource['queries'] !== undefined ) {
+            messages.push( `${prefix}.queries: Markdown resources must not have a queries field` )
+        }
+
+        if( resource['mode'] !== undefined ) {
+            messages.push( `${prefix}.mode: Markdown resources must not have a mode field` )
+        }
+    }
+
+
+    static #validateSqliteResource( { resource, prefix, messages } ) {
         if( resource['description'] === undefined || resource['description'] === null ) {
             messages.push( `${prefix}.description: Missing required field` )
         } else if( typeof resource['description'] !== 'string' || resource['description'].trim() === '' ) {

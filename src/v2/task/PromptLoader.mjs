@@ -1,9 +1,55 @@
-import { readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { readdir, access } from 'node:fs/promises'
+import { join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+import { SecurityScanner } from './SecurityScanner.mjs'
 
 
 class PromptLoader {
+    static async loadProviderPrompts( { prompts, schemaDir } ) {
+        const messages = []
+        const warnings = []
+        const loadedPrompts = {}
+
+        const entries = Object.entries( prompts )
+
+        const results = await Promise.allSettled(
+            entries
+                .map( ( [ key, definition ] ) => {
+                    const result = PromptLoader.#loadProviderContent( {
+                        key,
+                        definition,
+                        schemaDir
+                    } )
+
+                    return result
+                } )
+        )
+
+        results
+            .forEach( ( result, index ) => {
+                const [ key, definition ] = entries[ index ]
+
+                if( result.status === 'rejected' ) {
+                    messages.push( `prompt "${key}": ${result.reason.message}` )
+
+                    return
+                }
+
+                const { content, placeholders } = result.value
+                loadedPrompts[ key ] = {
+                    ...definition,
+                    content,
+                    placeholders
+                }
+            } )
+
+        const status = messages.length === 0
+
+        return { status, messages, warnings, prompts: loadedPrompts }
+    }
+
+
     static async load( { promptDir, type } ) {
         const messages = []
         const prompts = {}
@@ -90,6 +136,48 @@ class PromptLoader {
         const status = messages.length === 0
 
         return { status, messages }
+    }
+
+
+    static async #loadProviderContent( { key, definition, schemaDir } ) {
+        const { contentFile } = definition
+        const absolutePath = join( schemaDir, contentFile )
+
+        try {
+            await access( absolutePath )
+        } catch( err ) {
+            throw new Error( `Content file not found: ${contentFile}` )
+        }
+
+        const { status: scanStatus, messages: scanMessages } = await SecurityScanner
+            .scan( { filePath: absolutePath } )
+
+        if( !scanStatus ) {
+            const errorDetail = scanMessages.join( '; ' )
+
+            throw new Error( `Security violation in content file "${contentFile}": ${errorDetail}` )
+        }
+
+        const fileUrl = pathToFileURL( absolutePath ).href
+        const module = await import( fileUrl )
+        const content = module[ 'content' ] || null
+
+        if( content === null || content === undefined ) {
+            throw new Error( `Content file "${contentFile}" must export "content" (export const content)` )
+        }
+
+        if( typeof content !== 'string' ) {
+            throw new Error( `Content file "${contentFile}": content must be type "string"` )
+        }
+
+        if( content.trim().length === 0 ) {
+            throw new Error( `Content file "${contentFile}": content must not be empty` )
+        }
+
+        const { references, parameters } = PromptLoader.extractPlaceholders( { content } )
+        const placeholders = { references, parameters }
+
+        return { content, placeholders }
     }
 
 

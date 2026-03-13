@@ -998,4 +998,241 @@ describe( 'ResourceValidator', () => {
             expect( hasNameError ).toBe( true )
         } )
     } )
+
+
+    describe( 'markdown resources', () => {
+        test( 'passes a valid markdown resource', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'inline',
+                    name: 'duneanalytics-sql-reference.md',
+                    description: 'Complete DuneSQL syntax reference'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'fails when markdown name does not end with .md', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'inline',
+                    name: 'duneanalytics-sql-reference.txt',
+                    description: 'Complete DuneSQL syntax reference'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasNameError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'name' ) && msg.includes( '.md' )
+
+                    return match
+                } )
+
+            expect( hasNameError ).toBe( true )
+        } )
+
+
+        test( 'fails when markdown has queries field', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'inline',
+                    name: 'test-doc.md',
+                    description: 'Test doc',
+                    queries: { bySymbol: { sql: 'SELECT 1' } }
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasQueriesError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'queries' ) && msg.includes( 'must not' )
+
+                    return match
+                } )
+
+            expect( hasQueriesError ).toBe( true )
+        } )
+
+
+        test( 'fails when markdown has mode field', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'inline',
+                    name: 'test-doc.md',
+                    description: 'Test doc',
+                    mode: 'in-memory'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasModeError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'mode' ) && msg.includes( 'must not' )
+
+                    return match
+                } )
+
+            expect( hasModeError ).toBe( true )
+        } )
+
+
+        test( 'fails when markdown is missing origin', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    name: 'test-doc.md',
+                    description: 'Test doc'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasOriginError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'origin' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasOriginError ).toBe( true )
+        } )
+
+
+        test( 'fails when markdown is missing name', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'inline',
+                    description: 'Test doc'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasNameError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'name' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasNameError ).toBe( true )
+        } )
+
+
+        test( 'fails when markdown is missing description', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'inline',
+                    name: 'test-doc.md'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasDescError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'description' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasDescError ).toBe( true )
+        } )
+
+
+        test( 'fails when origin is invalid', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'remote',
+                    name: 'test-doc.md',
+                    description: 'Test doc'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasOriginError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'origin' ) && msg.includes( 'remote' )
+
+                    return match
+                } )
+
+            expect( hasOriginError ).toBe( true )
+        } )
+
+
+        test( 'passes markdown with origin project', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'project',
+                    name: 'test-doc.md',
+                    description: 'Test doc'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'passes markdown with origin global', () => {
+            const resources = {
+                sqlReference: {
+                    source: 'markdown',
+                    origin: 'global',
+                    name: 'test-doc.md',
+                    description: 'Test doc'
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+    } )
 } )

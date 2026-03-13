@@ -1,58 +1,63 @@
-import initSqlJs from 'sql.js'
-import { readFileSync } from 'node:fs'
+import Database from 'better-sqlite3'
+import { copyFileSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { join, dirname } from 'node:path'
 
 
 class ResourceDatabaseManager {
     static #connections = new Map()
-    static #sqlJsInstance = null
+    static #backupCreated = new Set()
+    static #basisFolder = 'flowmcp'
 
 
-    static async initialize( { resources, schemaRef } ) {
+    static setBasisFolder( { basisFolder } ) {
+        ResourceDatabaseManager.#basisFolder = basisFolder
+    }
+
+
+    static getBasisFolder() {
+        const basisFolder = ResourceDatabaseManager.#basisFolder
+
+        return { basisFolder }
+    }
+
+
+    static async initialize( { resources, schemaRef, schemaDir } ) {
         const messages = []
 
         const entries = Object.entries( resources || {} )
 
-        const results = await Promise.allSettled(
-            entries
-                .map( async ( [ resourceName, resourceDef ] ) => {
-                    const { source, lifecycle = 'persistent' } = resourceDef
+        entries
+            .forEach( ( [ resourceName, resourceDef ] ) => {
+                const { source } = resourceDef
 
-                    if( source !== 'sqlite' ) {
-                        messages.push( `Resource "${resourceName}": Unknown source "${source}"` )
-
-                        return
-                    }
-
-                    if( lifecycle !== 'persistent' ) {
-                        return
-                    }
-
-                    const key = `${schemaRef}::${resourceName}`
-
-                    if( ResourceDatabaseManager.#connections.has( key ) ) {
-                        return
-                    }
-
-                    const databasePath = ResourceDatabaseManager.#resolvePath( { database: resourceDef[ 'database' ] } )
-                    const { db, error } = await ResourceDatabaseManager.#connect( { databasePath } )
-
-                    if( error ) {
-                        messages.push( `Resource "${resourceName}": ${error}` )
-
-                        return
-                    }
-
-                    ResourceDatabaseManager.#connections.set( key, db )
-                } )
-        )
-
-        results
-            .forEach( ( result, index ) => {
-                if( result.status === 'rejected' ) {
-                    const resourceName = entries[ index ][ 0 ]
-                    messages.push( `Resource "${resourceName}": ${result.reason.message}` )
+                if( source !== 'sqlite' ) {
+                    return
                 }
+
+                const key = `${schemaRef}::${resourceName}`
+
+                if( ResourceDatabaseManager.#connections.has( key ) ) {
+                    return
+                }
+
+                const { resolvedPath } = ResourceDatabaseManager.resolvePath( {
+                    origin: resourceDef['origin'],
+                    name: resourceDef['name'],
+                    schemaDir,
+                    database: resourceDef['database']
+                } )
+
+                const mode = resourceDef['mode'] || 'in-memory'
+                const { db, error } = ResourceDatabaseManager.#connect( { databasePath: resolvedPath, mode } )
+
+                if( error ) {
+                    messages.push( `Resource "${resourceName}": ${error}` )
+
+                    return
+                }
+
+                ResourceDatabaseManager.#connections.set( key, { db, mode, databasePath: resolvedPath } )
             } )
 
         const status = messages.length === 0
@@ -63,17 +68,20 @@ class ResourceDatabaseManager {
 
     static getConnection( { schemaRef, resourceName } ) {
         const key = `${schemaRef}::${resourceName}`
-        const db = ResourceDatabaseManager.#connections.get( key ) || null
+        const entry = ResourceDatabaseManager.#connections.get( key ) || null
+        const db = entry ? entry['db'] : null
+        const mode = entry ? entry['mode'] : null
 
-        return { db }
+        return { db, mode }
     }
 
 
-    static async openTransient( { database } ) {
-        const databasePath = ResourceDatabaseManager.#resolvePath( { database } )
-        const { db, error } = await ResourceDatabaseManager.#connect( { databasePath } )
+    static openTransient( { database, origin, name, schemaDir, mode } ) {
+        const resolvedMode = mode || 'in-memory'
+        const { resolvedPath } = ResourceDatabaseManager.resolvePath( { origin, name, schemaDir, database } )
+        const { db, error } = ResourceDatabaseManager.#connect( { databasePath: resolvedPath, mode: resolvedMode } )
 
-        return { db, error }
+        return { db, error, mode: resolvedMode, databasePath: resolvedPath }
     }
 
 
@@ -86,14 +94,16 @@ class ResourceDatabaseManager {
 
     static closeAll() {
         ResourceDatabaseManager.#connections
-            .forEach( ( db ) => {
+            .forEach( ( entry ) => {
+                const { db } = entry
+
                 if( db && typeof db.close === 'function' ) {
                     db.close()
                 }
             } )
 
         ResourceDatabaseManager.#connections.clear()
-        ResourceDatabaseManager.#sqlJsInstance = null
+        ResourceDatabaseManager.#backupCreated.clear()
     }
 
 
@@ -104,26 +114,76 @@ class ResourceDatabaseManager {
     }
 
 
-    static #resolvePath( { database } ) {
-        if( database.startsWith( '~/' ) ) {
-            const resolved = database.replace( '~', homedir() )
-
-            return resolved
+    static createBackupIfNeeded( { databasePath } ) {
+        if( ResourceDatabaseManager.#backupCreated.has( databasePath ) ) {
+            return { created: false }
         }
 
-        return database
+        if( !existsSync( databasePath ) ) {
+            return { created: false }
+        }
+
+        const backupPath = `${databasePath}.bak`
+        copyFileSync( databasePath, backupPath )
+        ResourceDatabaseManager.#backupCreated.add( databasePath )
+
+        return { created: true }
     }
 
 
-    static async #connect( { databasePath } ) {
-        try {
-            if( !ResourceDatabaseManager.#sqlJsInstance ) {
-                ResourceDatabaseManager.#sqlJsInstance = await initSqlJs()
+    static resolvePath( { origin, name, schemaDir, database } ) {
+        if( database ) {
+            if( database.startsWith( '~/' ) ) {
+                const resolved = database.replace( '~', homedir() )
+
+                return { resolvedPath: resolved }
             }
 
-            const SQL = ResourceDatabaseManager.#sqlJsInstance
-            const buffer = readFileSync( databasePath )
-            const db = new SQL.Database( buffer )
+            return { resolvedPath: database }
+        }
+
+        const basisFolder = ResourceDatabaseManager.#basisFolder
+
+        const resolvers = {
+            'inline': () => {
+                const resolvedPath = join( schemaDir || '.', 'resources', name )
+
+                return resolvedPath
+            },
+            'project': () => {
+                const resolvedPath = join( process.cwd(), `.${basisFolder}`, 'resources', name )
+
+                return resolvedPath
+            },
+            'global': () => {
+                const resolvedPath = join( homedir(), `.${basisFolder}`, 'resources', name )
+
+                return resolvedPath
+            }
+        }
+
+        const resolver = resolvers[ origin ]
+
+        if( !resolver ) {
+            return { resolvedPath: name || '' }
+        }
+
+        const resolvedPath = resolver()
+
+        return { resolvedPath }
+    }
+
+
+    static #connect( { databasePath, mode } ) {
+        try {
+            if( mode === 'file-based' ) {
+                const db = new Database( databasePath )
+                db.pragma( 'journal_mode = WAL' )
+
+                return { db, error: null }
+            }
+
+            const db = new Database( databasePath, { readonly: true } )
 
             return { db, error: null }
         } catch( err ) {
