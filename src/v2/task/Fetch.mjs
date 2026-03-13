@@ -11,7 +11,8 @@ class Fetch {
             dataAsString: null
         }
 
-        const route = main['routes'][ routeName ]
+        const routesObj = main['tools'] || main['routes'] || {}
+        const route = routesObj[ routeName ]
         if( !route ) {
             struct['status'] = false
             struct['messages'].push( `Route "${routeName}" not found in schema` )
