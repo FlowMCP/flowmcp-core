@@ -203,9 +203,9 @@ describe( 'ResourceValidator', () => {
         } )
 
 
-        test( 'fails when more than 4 queries', () => {
+        test( 'fails when more than 6 queries', () => {
             const queries = {}
-            const queryNames = [ 'q1', 'q2', 'q3', 'q4', 'q5' ]
+            const queryNames = [ 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7' ]
             queryNames
                 .forEach( ( name ) => {
                     queries[ name ] = { ...validQuery }
@@ -225,7 +225,7 @@ describe( 'ResourceValidator', () => {
 
             const hasQueryError = messages
                 .some( ( msg ) => {
-                    const match = msg.includes( 'Maximum 4 queries' )
+                    const match = msg.includes( 'Maximum 6 queries' )
 
                     return match
                 } )
@@ -549,14 +549,14 @@ describe( 'ResourceValidator', () => {
         } )
 
 
-        test( 'rejects SQL that does not start with SELECT', () => {
+        test( 'rejects SQL that does not start with SELECT or WITH', () => {
             const resources = {
                 tokenLookup: {
                     ...validResource['tokenLookup'],
                     queries: {
                         bySymbol: {
                             ...validQuery,
-                            sql: 'WITH cte AS (SELECT 1) SELECT * FROM cte'
+                            sql: 'EXPLAIN SELECT * FROM tokens'
                         }
                     }
                 }
@@ -569,12 +569,32 @@ describe( 'ResourceValidator', () => {
 
             const hasSelectError = messages
                 .some( ( msg ) => {
-                    const match = msg.includes( 'Must begin with SELECT' )
+                    const match = msg.includes( 'Must begin with SELECT or WITH' )
 
                     return match
                 } )
 
             expect( hasSelectError ).toBe( true )
+        } )
+
+
+        test( 'accepts SQL that starts with WITH (CTE)', () => {
+            const resources = {
+                tokenLookup: {
+                    ...validResource['tokenLookup'],
+                    queries: {
+                        bySymbol: {
+                            ...validQuery,
+                            sql: 'WITH cte AS (SELECT 1) SELECT * FROM cte'
+                        }
+                    }
+                }
+            }
+
+            const { status } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( true )
         } )
     } )
 

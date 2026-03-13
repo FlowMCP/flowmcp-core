@@ -70,11 +70,11 @@ class FlowMCP {
     }
 
 
-    static createHandlers( { handlersFn, sharedLists, libraries, routeNames } ) {
-        const { handlerMap } = HandlerFactory
-            .create( { handlersFn, sharedLists, libraries, routeNames } )
+    static createHandlers( { handlersFn, sharedLists, libraries, routeNames, resources } ) {
+        const { handlerMap, resourceHandlerMap } = HandlerFactory
+            .create( { handlersFn, sharedLists, libraries, routeNames, resources } )
 
-        return { handlerMap }
+        return { handlerMap, resourceHandlerMap }
     }
 
 
@@ -107,6 +107,22 @@ class FlowMCP {
             .generate( { response, mimeType } )
 
         return { output }
+    }
+
+
+    static async executeResource( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } ) {
+        const result = await Pipeline
+            .executeResource( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } )
+
+        return result
+    }
+
+
+    static async initializeResourceDbs( { resources, schemaRef } ) {
+        const result = await ResourceDatabaseManager
+            .initialize( { resources, schemaRef } )
+
+        return result
     }
 
 
@@ -150,6 +166,8 @@ export { SkillLoader } from './task/SkillLoader.mjs'
 export { SkillValidator } from './task/SkillValidator.mjs'
 export { ResourceValidator } from './task/ResourceValidator.mjs'
 export { ResourceExecutor } from './task/ResourceExecutor.mjs'
+export { ResourceDatabaseManager } from './task/ResourceDatabaseManager.mjs'
+export { PromptValidator } from './task/PromptValidator.mjs'
 export { IdResolver } from './task/IdResolver.mjs'
 export { PromptLoader } from './task/PromptLoader.mjs'
 export { AgentManifestLoader } from './task/AgentManifestLoader.mjs'

@@ -212,7 +212,7 @@ describe( 'ResourceExecutor', () => {
 
             const hasFileError = struct['messages']
                 .some( ( msg ) => {
-                    const match = msg.includes( 'Database file not found' )
+                    const match = msg.includes( 'Failed to open database' ) || msg.includes( 'Database file not found' )
 
                     return match
                 } )

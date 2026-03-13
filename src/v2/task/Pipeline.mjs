@@ -9,6 +9,8 @@ import { SkillLoader } from './SkillLoader.mjs'
 import { SkillValidator } from './SkillValidator.mjs'
 import { ResourceValidator } from './ResourceValidator.mjs'
 import { ResourceExecutor } from './ResourceExecutor.mjs'
+import { ResourceDatabaseManager } from './ResourceDatabaseManager.mjs'
+import { PromptValidator } from './PromptValidator.mjs'
 import { AgentManifestLoader } from './AgentManifestLoader.mjs'
 import { AgentManifestValidator } from './AgentManifestValidator.mjs'
 
@@ -158,6 +160,36 @@ class Pipeline {
             }
 
             resourceValidationMessages = resValidMessages
+
+            const schemaRef = main['namespace'] || 'unknown'
+            const { status: dbInitStatus, messages: dbInitMessages } = await ResourceDatabaseManager
+                .initialize( { resources: main['resources'], schemaRef } )
+
+            if( !dbInitStatus ) {
+                dbInitMessages
+                    .forEach( ( msg ) => { warnings.push( msg ) } )
+            }
+        }
+
+        let prompts = {}
+
+        if( main['prompts'] ) {
+            const { status: promptValidStatus, messages: promptValidMessages } = PromptValidator
+                .validate( { prompts: main['prompts'] } )
+
+            if( !promptValidStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: promptValidMessages,
+                    main,
+                    handlerMap,
+                    sharedLists,
+                    libraries,
+                    warnings
+                } )
+            }
+
+            prompts = main['prompts']
         }
 
         return Pipeline.#buildResult( {
@@ -169,14 +201,15 @@ class Pipeline {
             sharedLists,
             libraries,
             skills,
+            prompts,
             warnings
         } )
     }
 
 
-    static async executeResource( { resourceDefinition, queryName, userParams, handlerMap } ) {
+    static async executeResource( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } ) {
         const { struct } = await ResourceExecutor
-            .execute( { resourceDefinition, queryName, userParams, handlerMap } )
+            .execute( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } )
 
         return { struct }
     }
@@ -233,6 +266,7 @@ class Pipeline {
         sharedLists = {},
         libraries = {},
         skills = {},
+        prompts = {},
         warnings = []
     } ) {
         const result = {
@@ -244,6 +278,7 @@ class Pipeline {
             sharedLists,
             libraries,
             skills,
+            prompts,
             warnings
         }
 

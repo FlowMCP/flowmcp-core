@@ -62,6 +62,14 @@ class ResourceValidator {
             messages.push( `${prefix}.description: Must be a non-empty string` )
         }
 
+        if( resource['lifecycle'] !== undefined ) {
+            const validLifecycles = [ 'persistent', 'transient' ]
+
+            if( !validLifecycles.includes( resource['lifecycle'] ) ) {
+                messages.push( `${prefix}.lifecycle: Must be "persistent" or "transient", got "${resource['lifecycle']}"` )
+            }
+        }
+
         if( resource['database'] === undefined || resource['database'] === null ) {
             messages.push( `${prefix}.database: Missing required field` )
         } else if( typeof resource['database'] !== 'string' ) {
@@ -84,8 +92,8 @@ class ResourceValidator {
 
         const queryNames = Object.keys( resource['queries'] )
 
-        if( queryNames.length > 4 ) {
-            messages.push( `${prefix}.queries: Maximum 4 queries allowed, got ${queryNames.length}` )
+        if( queryNames.length > 6 ) {
+            messages.push( `${prefix}.queries: Maximum 6 queries allowed, got ${queryNames.length}` )
 
             return
         }
@@ -153,8 +161,12 @@ class ResourceValidator {
     static #validateSqlSecurity( { sql, prefix, messages } ) {
         const trimmed = sql.trim()
 
-        if( !/^SELECT/i.test( trimmed ) ) {
-            messages.push( `${prefix}.sql: Must begin with SELECT` )
+        if( trimmed === '{{DYNAMIC_SQL}}' ) {
+            return
+        }
+
+        if( !/^(SELECT|WITH)\b/i.test( trimmed ) ) {
+            messages.push( `${prefix}.sql: Must begin with SELECT or WITH (CTE)` )
         }
 
         const blockedPatterns = [
