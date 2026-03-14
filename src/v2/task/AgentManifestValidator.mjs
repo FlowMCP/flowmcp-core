@@ -24,6 +24,9 @@ class AgentManifestValidator {
         }
 
         AgentManifestValidator.#validateToolReferences( { manifest, messages: struct[ 'messages' ] } )
+        AgentManifestValidator.#validateSlashRule( { obj: manifest[ 'prompts' ], fieldName: 'prompts', messages: struct[ 'messages' ], allowSlashes: true } )
+        AgentManifestValidator.#validateSlashRule( { obj: manifest[ 'skills' ], fieldName: 'skills', messages: struct[ 'messages' ], allowSlashes: false } )
+        AgentManifestValidator.#validateSlashRule( { obj: manifest[ 'resources' ], fieldName: 'resources', messages: struct[ 'messages' ], allowSlashes: true } )
         AgentManifestValidator.#validateTests( { manifest, messages: struct[ 'messages' ] } )
 
         if( struct[ 'messages' ].length === 0 ) {
@@ -79,9 +82,9 @@ class AgentManifestValidator {
 
         if( manifest[ 'tools' ] === undefined || manifest[ 'tools' ] === null ) {
             messages.push( 'manifest.tools: Missing required field' )
-        } else if( !Array.isArray( manifest[ 'tools' ] ) ) {
-            messages.push( 'manifest.tools: Must be an array' )
-        } else if( manifest[ 'tools' ].length === 0 ) {
+        } else if( typeof manifest[ 'tools' ] !== 'object' || Array.isArray( manifest[ 'tools' ] ) ) {
+            messages.push( 'manifest.tools: Must be a plain object' )
+        } else if( Object.keys( manifest[ 'tools' ] ).length === 0 ) {
             messages.push( 'manifest.tools: Must not be empty' )
         }
 
@@ -98,19 +101,59 @@ class AgentManifestValidator {
     static #validateToolReferences( { manifest, messages } ) {
         const tools = manifest[ 'tools' ]
 
-        if( !Array.isArray( tools ) ) {
+        if( typeof tools !== 'object' || tools === null || Array.isArray( tools ) ) {
             return
         }
 
-        tools
-            .forEach( ( toolId, index ) => {
-                const { status, messages: idMessages } = IdResolver.validate( { id: toolId } )
+        Object.entries( tools )
+            .forEach( ( [ key, value ] ) => {
+                const hasSlash = key.includes( '/' )
 
-                if( !status ) {
-                    idMessages
-                        .forEach( ( msg ) => {
-                            messages.push( `manifest.tools[${index}]: Invalid ID "${toolId}" — ${msg}` )
-                        } )
+                if( hasSlash ) {
+                    if( value !== null ) {
+                        messages.push( `manifest.tools["${key}"]: External reference (contains "/") must have null value` )
+                    }
+
+                    const { status, messages: idMessages } = IdResolver.validate( { id: key } )
+
+                    if( !status ) {
+                        idMessages
+                            .forEach( ( msg ) => {
+                                messages.push( `manifest.tools["${key}"]: Invalid ID — ${msg}` )
+                            } )
+                    }
+                } else {
+                    if( value === null || value === undefined ) {
+                        messages.push( `manifest.tools["${key}"]: Inline tool (no "/") must have a tool definition object` )
+                    } else if( typeof value !== 'object' || Array.isArray( value ) ) {
+                        messages.push( `manifest.tools["${key}"]: Inline tool must be a plain object` )
+                    }
+                }
+            } )
+    }
+
+
+    static #validateSlashRule( { obj, fieldName, messages, allowSlashes } ) {
+        if( obj === undefined || obj === null ) {
+            return
+        }
+
+        if( typeof obj !== 'object' || Array.isArray( obj ) ) {
+            messages.push( `manifest.${fieldName}: Must be a plain object` )
+
+            return
+        }
+
+        Object.entries( obj )
+            .forEach( ( [ key, value ] ) => {
+                const hasSlash = key.includes( '/' )
+
+                if( hasSlash && !allowSlashes ) {
+                    messages.push( `manifest.${fieldName}["${key}"]: Slash keys are not allowed (model-specific, inline-only)` )
+                } else if( hasSlash && value !== null ) {
+                    messages.push( `manifest.${fieldName}["${key}"]: External reference (contains "/") must have null value` )
+                } else if( !hasSlash && value === null ) {
+                    messages.push( `manifest.${fieldName}["${key}"]: Inline entry (no "/") must have a definition object` )
                 }
             } )
     }

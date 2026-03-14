@@ -10,7 +10,7 @@ class AgentManifestLoader {
         [ 'version', 'string' ],
         [ 'model', 'string' ],
         [ 'systemPrompt', 'string' ],
-        [ 'tools', 'array' ],
+        [ 'tools', 'object' ],
         [ 'tests', 'array' ]
     ]
 
@@ -152,11 +152,15 @@ class AgentManifestLoader {
                     messages.push( `manifest.${fieldName}: Required field is missing` )
                 } else if( fieldType === 'array' && !Array.isArray( value ) ) {
                     messages.push( `manifest.${fieldName}: Must be an array` )
+                } else if( fieldType === 'object' && ( typeof value !== 'object' || value === null || Array.isArray( value ) ) ) {
+                    messages.push( `manifest.${fieldName}: Must be a plain object` )
                 } else if( fieldType === 'string' && typeof value !== 'string' ) {
                     messages.push( `manifest.${fieldName}: Must be a string` )
                 } else if( fieldType === 'string' && value.length === 0 ) {
                     messages.push( `manifest.${fieldName}: Must not be empty` )
                 } else if( fieldType === 'array' && value.length === 0 ) {
+                    messages.push( `manifest.${fieldName}: Must not be empty` )
+                } else if( fieldType === 'object' && Object.keys( value ).length === 0 ) {
                     messages.push( `manifest.${fieldName}: Must not be empty` )
                 }
             } )
