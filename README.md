@@ -946,6 +946,7 @@ console.log(`Filtered ${filteredArrayOfSchemas.length} schemas in ${endTime - st
 
 For additional documentation and examples:
 
+- **[FlowMCP Specification v3.0.0](https://github.com/FlowMCP/flowmcp-spec)** - Complete specification with 17 documents ([llms.txt](https://github.com/FlowMCP/flowmcp-spec/blob/main/spec/v3.0.0/llms.txt))
 - **[MIGRATION.md](./MIGRATION.md)** - Migration guide from v1 to v2
 - **[FILTERING.md](./FILTERING.md)** - Technical specification for `filterArrayOfSchemas()` (v1 API)
 - **tests/** - Comprehensive test suite with examples for all functionality
