@@ -11,6 +11,7 @@ import { Fetch } from './task/Fetch.mjs'
 import { IdResolver } from './task/IdResolver.mjs'
 import { AgentManifestLoader } from './task/AgentManifestLoader.mjs'
 import { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
+import { ZodBuilder } from './task/ZodBuilder.mjs'
 
 
 class FlowMCP {
@@ -148,6 +149,56 @@ class FlowMCP {
 
         return result
     }
+
+
+    static prepareServerTool( { main, handlerMap, serverParams, routeName } ) {
+        const namespace = main[ 'namespace' ] || 'unknown'
+        const routes = main[ 'tools' ] || main[ 'routes' ] || {}
+        const routeConfig = routes[ routeName ]
+
+        if( !routeConfig ) {
+            throw new Error( `Route "${routeName}" not found in schema "${namespace}"` )
+        }
+
+        const { toolName } = FlowMCP.#buildToolName( { routeName, namespace } )
+        const { description } = routeConfig
+        const zod = ZodBuilder.getZodSchema( { 'route': routeConfig } )
+
+        const func = async ( userParams ) => {
+            const fetchResult = await FlowMCP.fetch( {
+                main,
+                handlerMap,
+                userParams,
+                serverParams,
+                routeName
+            } )
+
+            const { status, messages, data, dataAsString } = fetchResult
+
+            return { status, messages, data, dataAsString }
+        }
+
+        return { toolName, description, zod, func }
+    }
+
+
+    static #buildToolName( { routeName, namespace } ) {
+        const routeNameSnakeCase = routeName
+            .replace( /([a-z0-9])([A-Z])/g, '$1_$2' )
+            .toLowerCase()
+        const namespaceSnakeCase = namespace
+            .replace( /([a-z0-9])([A-Z])/g, '$1_$2' )
+            .toLowerCase()
+
+        let toolName = `${routeNameSnakeCase}_${namespaceSnakeCase}`
+        toolName = toolName
+            .substring( 0, 63 )
+            .replaceAll( ':', '' )
+            .replaceAll( '-', '_' )
+            .replaceAll( '/', '_' )
+
+        return { toolName }
+    }
 }
 
 
@@ -174,3 +225,4 @@ export { PromptLoader } from './task/PromptLoader.mjs'
 export { AgentManifestLoader } from './task/AgentManifestLoader.mjs'
 export { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
 export { AgentTestRunner } from './task/AgentTestRunner.mjs'
+export { ZodBuilder } from './task/ZodBuilder.mjs'
