@@ -165,7 +165,10 @@ class ResourceDatabaseManager {
         const resolver = resolvers[ origin ]
 
         if( !resolver ) {
-            return { resolvedPath: name || '' }
+            const warning = origin
+                ? `ResourceDatabaseManager: Unknown origin "${origin}" — using name as fallback path`
+                : null
+            return { resolvedPath: name || '', warning }
         }
 
         const resolvedPath = resolver()

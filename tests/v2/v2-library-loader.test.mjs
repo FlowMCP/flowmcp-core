@@ -64,17 +64,45 @@ describe( 'LibraryLoader', () => {
 
 
     describe( 'getDefaultAllowlist()', () => {
-        test( 'returns the default allowlist', () => {
+        test( 'returns the default allowlist with built-ins and external libraries', () => {
             const { allowlist } = LibraryLoader.getDefaultAllowlist()
 
             expect( Array.isArray( allowlist ) ).toBe( true )
+            expect( allowlist.length ).toBe( 18 )
+
+            // Node.js Built-ins
             expect( allowlist ).toContain( 'zlib' )
             expect( allowlist ).toContain( 'crypto' )
             expect( allowlist ).toContain( 'buffer' )
-            expect( allowlist ).not.toContain( 'ethers' )
+            expect( allowlist ).toContain( 'path' )
+            expect( allowlist ).toContain( 'url' )
+            expect( allowlist ).toContain( 'util' )
+            expect( allowlist ).toContain( 'stream' )
+            expect( allowlist ).toContain( 'querystring' )
+
+            // Blockchain / Web3
+            expect( allowlist ).toContain( 'ethers' )
+
+            // Trading / Finance
+            expect( allowlist ).toContain( 'ccxt' )
+            expect( allowlist ).toContain( 'indicatorts' )
+            expect( allowlist ).toContain( 'yahoo-finance2' )
+
+            // Visualization
+            expect( allowlist ).toContain( 'vega-lite' )
+            expect( allowlist ).toContain( 'vega' )
+            expect( allowlist ).toContain( 'canvas' )
+
+            // Storage / IPFS
+            expect( allowlist ).toContain( 'pinata' )
+            expect( allowlist ).toContain( 'irys' )
+
+            // Database
+            expect( allowlist ).toContain( 'better-sqlite3' )
+
+            // Still NOT allowed
             expect( allowlist ).not.toContain( 'axios' )
             expect( allowlist ).not.toContain( 'moment' )
-            expect( allowlist ).not.toContain( 'ccxt' )
         } )
 
 

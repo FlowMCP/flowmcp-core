@@ -53,7 +53,10 @@ class SkillLoader {
             throw new Error( 'Missing "skill" export' )
         }
 
-        const content = skill[ 'content' ] || ''
+        const content = skill[ 'content' ]
+        if( content === undefined || content === null || content === '' ) {
+            throw new Error( 'Skill content is empty or missing' )
+        }
         const { placeholders } = SkillLoader.#extractPlaceholders( { content } )
 
         return { skill, placeholders }

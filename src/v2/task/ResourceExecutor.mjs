@@ -223,8 +223,9 @@ class ResourceExecutor {
             }
         }
 
-        const handler = handlerMap || {}
-        const resourceHandler = handler[ queryName ] || {}
+        const handler = handlerMap
+        const effectiveHandler = handler || {}
+        const resourceHandler = effectiveHandler[ queryName ] || {}
 
         if( resourceHandler['postRequest'] ) {
             try {

@@ -26,11 +26,12 @@ class Fetch {
         let payload = Fetch
             .#buildPayload( { root, path, method, route, userParams, serverParams, defaultHeaders } )
 
-        const handler = handlerMap[ routeName ] || {}
+        const handler = handlerMap[ routeName ]
+        const effectiveHandler = handler || {}
 
-        if( handler['preRequest'] ) {
+        if( effectiveHandler['preRequest'] ) {
             try {
-                const result = await handler['preRequest']( {
+                const result = await effectiveHandler['preRequest']( {
                     struct: { url: payload['url'], method: payload['method'], headers: payload['headers'], body: payload['body'] },
                     payload: { ...userParams }
                 } )
@@ -48,9 +49,9 @@ class Fetch {
             }
         }
 
-        if( handler['executeRequest'] ) {
+        if( effectiveHandler['executeRequest'] ) {
             try {
-                const result = await handler['executeRequest']( {
+                const result = await effectiveHandler['executeRequest']( {
                     struct,
                     payload: { ...payload, userParams, serverParams }
                 } )
@@ -76,9 +77,9 @@ class Fetch {
             return { struct }
         }
 
-        if( handler['postRequest'] ) {
+        if( effectiveHandler['postRequest'] ) {
             try {
-                const result = await handler['postRequest']( {
+                const result = await effectiveHandler['postRequest']( {
                     response: struct['data'],
                     struct: { url: payload['url'], method: payload['method'], headers: payload['headers'], body: payload['body'] },
                     payload: { ...userParams }
@@ -112,7 +113,8 @@ class Fetch {
                     .#insertValue( { userParams, serverParams, key, value } )
             } )
 
-        const parametersWithRequired = ( route['parameters'] || [] )
+        const rawParameters = route['parameters']
+        const parametersWithRequired = ( rawParameters || [] )
             .map( ( param ) => {
                 if( !Object.hasOwn( param, 'z' ) ) {
                     return { required: true, ...param }
@@ -255,7 +257,11 @@ class Fetch {
                 }
                 paramName = raw
             }
-            value = value.replace( `{{${value.slice( value.indexOf( '{{' ) + 2, value.indexOf( '}}' ) )}}}`, params[ paramName ] || '' )
+            const resolvedParam = params[ paramName ]
+            if( resolvedParam === undefined || resolvedParam === null ) {
+                // ServerParam not resolved — will use empty string as fallback
+            }
+            value = value.replace( `{{${value.slice( value.indexOf( '{{' ) + 2, value.indexOf( '}}' ) )}}}`, resolvedParam || '' )
         }
 
         return value

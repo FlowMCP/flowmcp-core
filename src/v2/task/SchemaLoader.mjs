@@ -10,6 +10,18 @@ class SchemaLoader {
         const schema = module['schema'] || null
         const hasHandlers = typeof handlersFn === 'function'
 
+        if( main === null && schema === null ) {
+            return {
+                main,
+                handlersFn,
+                schema,
+                hasHandlers,
+                module,
+                messages: [ 'SchemaLoader: Module has neither "main" nor "schema" export — cannot load' ],
+                detectedVersion: 'unknown'
+            }
+        }
+
         const { messages, detectedVersion } = SchemaLoader
             .#resolveToolsAlias( { main } )
 

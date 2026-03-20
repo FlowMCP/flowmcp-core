@@ -1,5 +1,6 @@
 class LibraryLoader {
     static #defaultAllowlist = [
+        // Node.js Built-ins
         'zlib',
         'crypto',
         'buffer',
@@ -7,7 +8,22 @@ class LibraryLoader {
         'url',
         'util',
         'stream',
-        'querystring'
+        'querystring',
+        // Blockchain / Web3
+        'ethers',
+        // Trading / Finance
+        'ccxt',
+        'indicatorts',
+        'yahoo-finance2',
+        // Visualization
+        'vega-lite',
+        'vega',
+        'canvas',
+        // Storage / IPFS
+        'pinata',
+        'irys',
+        // Database
+        'better-sqlite3'
     ]
 
 

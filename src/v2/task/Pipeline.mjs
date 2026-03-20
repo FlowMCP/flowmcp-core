@@ -74,27 +74,44 @@ class Pipeline {
             } )
         }
 
-        const sharedListRefs = main['sharedLists'] || []
+        const sharedListRefs = main['sharedLists']
+        if( sharedListRefs !== undefined && sharedListRefs !== null && !Array.isArray( sharedListRefs ) ) {
+            warnings.push( 'PIPE-WARN: main.sharedLists exists but is not an array' )
+        }
+        const effectiveSharedListRefs = Array.isArray( sharedListRefs ) ? sharedListRefs : []
         let sharedLists = {}
 
-        if( sharedListRefs.length > 0 && listsDir ) {
-            const resolved = await SharedListResolver
-                .resolve( { sharedListRefs, listsDir } )
-            sharedLists = resolved['sharedLists']
+        if( effectiveSharedListRefs.length > 0 ) {
+            if( !listsDir ) {
+                warnings.push( 'PIPE-WARN: Schema declares sharedLists but no listsDir was provided — lists will NOT be loaded' )
+            } else {
+                const resolved = await SharedListResolver
+                    .resolve( { sharedListRefs: effectiveSharedListRefs, listsDir } )
+                sharedLists = resolved['sharedLists']
+            }
         }
 
-        const requiredLibraries = main['requiredLibraries'] || []
+        const rawRequiredLibraries = main['requiredLibraries']
+        const effectiveRequiredLibraries = Array.isArray( rawRequiredLibraries ) ? rawRequiredLibraries : []
         let libraries = {}
 
-        if( requiredLibraries.length > 0 ) {
+        if( effectiveRequiredLibraries.length > 0 ) {
+            if( !allowlist ) {
+                warnings.push( 'PIPE-WARN: Schema declares requiredLibraries but no allowlist was provided — using default allowlist' )
+            }
             const loaded = await LibraryLoader
-                .load( { requiredLibraries, allowlist } )
+                .load( { requiredLibraries: effectiveRequiredLibraries, allowlist } )
             libraries = loaded['libraries']
         }
 
         const toolsKey = main['tools'] ? 'tools' : 'routes'
-        const toolsObj = main[ toolsKey ] || {}
-        const routeNames = Object.keys( toolsObj )
+        const toolsObj = main[ toolsKey ]
+        if( ( toolsObj === undefined || toolsObj === null || Object.keys( toolsObj || {} ).length === 0 )
+            && !main['resources'] && !main['skills'] ) {
+            warnings.push( 'PIPE-WARN: Schema has no tools, resources, or skills — nothing to execute' )
+        }
+        const effectiveToolsObj = toolsObj || {}
+        const routeNames = Object.keys( effectiveToolsObj )
 
         const { handlerMap, resourceHandlerMap } = HandlerFactory
             .create( { handlersFn, sharedLists, libraries, routeNames, resources: main['resources'] } )
@@ -120,7 +137,7 @@ class Pipeline {
                 } )
             }
 
-            const toolNames = Object.keys( toolsObj )
+            const toolNames = Object.keys( effectiveToolsObj )
             const resourceNames = Object.keys( main['resources'] || {} )
 
             const { status: skillValidStatus, messages: skillValidMessages } = SkillValidator

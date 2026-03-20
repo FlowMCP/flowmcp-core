@@ -28,8 +28,9 @@ class HandlerFactory {
 
         routeNames
             .forEach( ( routeName ) => {
-                const handler = raw[ routeName ] || {}
-                const { preRequest, postRequest, executeRequest } = handler
+                const handler = raw[ routeName ]
+                const effectiveHandler = handler || {}
+                const { preRequest, postRequest, executeRequest } = effectiveHandler
 
                 handlerMap[ routeName ] = {
                     preRequest: typeof preRequest === 'function' ? preRequest : null,

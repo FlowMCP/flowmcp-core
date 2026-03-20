@@ -36,6 +36,10 @@ class LegacyAdapter {
             handlers: legacyHandlers
         } = legacySchema
 
+        if( !root ) {
+            warnings.push( 'LegacyAdapter: Legacy schema has no root URL — using placeholder "https://unknown"' )
+        }
+
         const main = {
             namespace: namespace || 'unknown',
             name: name || 'Unknown',

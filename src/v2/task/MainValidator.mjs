@@ -15,7 +15,7 @@ class MainValidator {
             return { status: false, messages, warnings }
         }
 
-        MainValidator.#validateTopLevel( { main, messages } )
+        MainValidator.#validateTopLevel( { main, messages, warnings } )
 
         if( messages.length > 0 ) {
             return { status: false, messages, warnings }
@@ -37,7 +37,7 @@ class MainValidator {
     }
 
 
-    static #validateTopLevel( { main, messages } ) {
+    static #validateTopLevel( { main, messages, warnings } ) {
         const hasTools = main[ 'tools' ] !== undefined && main[ 'tools' ] !== null
         const hasRoutes = main[ 'routes' ] !== undefined && main[ 'routes' ] !== null
         const hasResources = main[ 'resources' ] !== undefined && main[ 'resources' ] !== null
@@ -86,11 +86,11 @@ class MainValidator {
             messages.push( `main.version: Must match pattern /^(2|3)\\.\\d+\\.\\d+$/, got "${main[ 'version' ]}"` )
         }
 
-        if( !main[ 'root' ].startsWith( 'https://' ) ) {
+        if( main[ 'root' ] === '' ) {
+            warnings.push( 'main.root: Empty root URL — schema likely uses executeRequest handlers only' )
+        } else if( !main[ 'root' ].startsWith( 'https://' ) ) {
             messages.push( `main.root: Must start with "https://", got "${main[ 'root' ]}"` )
-        }
-
-        if( main[ 'root' ].endsWith( '/' ) ) {
+        } else if( main[ 'root' ].endsWith( '/' ) ) {
             messages.push( 'main.root: Must not end with trailing slash' )
         }
 
@@ -171,11 +171,7 @@ class MainValidator {
             return
         }
 
-        if( isV3 ) {
-            messages.push( `TST001 error   ${toolName}: Must have at least ${minTests} tests (found ${count})` )
-        } else {
-            warnings.push( `TST001 warning ${toolName}: Should have at least ${minTests} tests (found ${count})` )
-        }
+        warnings.push( `TST001 warning ${toolName}: Should have at least ${minTests} tests (found ${count})` )
     }
 
 

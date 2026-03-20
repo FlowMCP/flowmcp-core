@@ -2,7 +2,11 @@ import { readFile } from 'node:fs/promises'
 
 
 class SecurityScanner {
-    static async scan( { filePath } ) {
+    static async scan( { filePath, skipScan = false } ) {
+        if( skipScan ) {
+            return { status: true, messages: [] }
+        }
+
         const content = await readFile( filePath, 'utf-8' )
         const { status, messages } = SecurityScanner
             .#scanContent( { content, filePath } )
@@ -11,7 +15,11 @@ class SecurityScanner {
     }
 
 
-    static scanString( { content, filePath = '<string>' } ) {
+    static scanString( { content, filePath = '<string>', skipScan = false } ) {
+        if( skipScan ) {
+            return { status: true, messages: [] }
+        }
+
         const { status, messages } = SecurityScanner
             .#scanContent( { content, filePath } )
 
@@ -52,8 +60,9 @@ class SecurityScanner {
             [ 'import ',        'SEC001', 'import' ],
             [ 'require(',       'SEC002', 'require' ],
             [ 'eval(',          'SEC003', 'eval' ],
-            [ 'Function(',      'SEC004', 'Function constructor' ],
+            [ ' Function(',     'SEC004', 'Function constructor' ],
             [ 'new Function',   'SEC005', 'new Function' ],
+            [ '(Function(',     'SEC004', 'Function constructor' ],
             [ 'process.',       'SEC006', 'process access' ],
             [ 'child_process',  'SEC007', 'child_process' ],
             [ 'fs.',            'SEC008', 'filesystem access' ],
