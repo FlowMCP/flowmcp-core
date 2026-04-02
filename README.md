@@ -1,4 +1,4 @@
-[![Test](https://img.shields.io/github/actions/workflow/status/flowmcp/flowmcp/test-on-release.yml)]() ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+[![Test](https://img.shields.io/github/actions/workflow/status/FlowMCP/flowmcp-core/test-on-release.yml)]() ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 # FlowMCP Core
 
