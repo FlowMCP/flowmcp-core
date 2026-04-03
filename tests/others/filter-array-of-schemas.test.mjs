@@ -1,4 +1,4 @@
-import { SchemaImporter } from 'schemaimporter'
+import { SchemaImporter } from '../fixtures/SchemaImporter.mjs'
 
 import { FlowMCP } from '../../src/v1/index.mjs'
 
@@ -18,7 +18,7 @@ describe( 'SchemaImporter & FlowMCP: Filtering by Namespace', () => {
 
         const result = FlowMCP.filterArrayOfSchemas( {
             arrayOfSchemas,
-            includeNamespaces: [ 'luksoNetwork' ],
+            includeNamespaces: [ 'worldbank' ],
             excludeNamespaces: [],
             activateTags: []
         } )
@@ -33,14 +33,14 @@ describe( 'SchemaImporter & FlowMCP: Filtering by Namespace', () => {
     } )
 
 
-    it( 'filters schemas by namespace "luksoNetwork"', () => {
+    it( 'filters schemas by namespace "worldbank"', () => {
         expect( Array.isArray( filteredArrayOfSchemas ) ).toBe( true )
         expect( filteredArrayOfSchemas.length ).toBeGreaterThan( 0 )
 
 
         filteredArrayOfSchemas
             .forEach( ( schema ) => {
-                expect( schema.namespace ).toBe( 'luksoNetwork' )
+                expect( schema.namespace ).toBe( 'worldbank' )
             } )
     } )
 } )

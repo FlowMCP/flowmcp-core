@@ -1,4 +1,4 @@
-import { SchemaImporter } from 'schemaimporter'
+import { SchemaImporter } from '../fixtures/SchemaImporter.mjs'
 
 import { FlowMCP } from '../../src/v1/index.mjs'
 
