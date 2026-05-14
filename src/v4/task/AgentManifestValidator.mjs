@@ -67,11 +67,11 @@ class AgentManifestValidator {
         }
 
         if( manifest[ 'version' ] === undefined || manifest[ 'version' ] === null ) {
-            messages.push( 'manifest.version: Missing required field' )
+            messages.push( 'AGT004 manifest.version: Missing required field' )
         } else if( typeof manifest[ 'version' ] !== 'string' ) {
-            messages.push( 'manifest.version: Must be type "string"' )
-        } else if( manifest[ 'version' ] !== 'flowmcp/3.0.0' ) {
-            messages.push( `manifest.version: Must be "flowmcp/3.0.0", got "${manifest[ 'version' ]}"` )
+            messages.push( 'AGT004 manifest.version: Must be type "string"' )
+        } else if( manifest[ 'version' ] !== 'flowmcp/4.0.0' ) {
+            messages.push( `AGT004 manifest.version: Must be "flowmcp/4.0.0", got "${manifest[ 'version' ]}"` )
         }
 
         if( manifest[ 'systemPrompt' ] === undefined || manifest[ 'systemPrompt' ] === null ) {
@@ -215,7 +215,7 @@ class AgentManifestValidator {
         }
 
         if( !Array.isArray( selections ) ) {
-            messages.push( 'AGT010 manifest.selections: Must be an array' )
+            messages.push( 'AGT030 manifest.selections: Must be an array' )
 
             return
         }
@@ -223,7 +223,7 @@ class AgentManifestValidator {
         selections
             .forEach( ( id, index ) => {
                 if( typeof id !== 'string' ) {
-                    messages.push( `AGT010 manifest.selections[${index}]: Must be type "string", got ${typeof id}` )
+                    messages.push( `AGT030 manifest.selections[${index}]: Must be type "string", got ${typeof id}` )
 
                     return
                 }
@@ -233,7 +233,7 @@ class AgentManifestValidator {
                 if( !status ) {
                     idMessages
                         .forEach( ( msg ) => {
-                            messages.push( `AGT010 manifest.selections[${index}]: Invalid ID "${id}" — ${msg}` )
+                            messages.push( `AGT030 manifest.selections[${index}]: Invalid ID "${id}" — ${msg}` )
                         } )
 
                     return
@@ -243,7 +243,7 @@ class AgentManifestValidator {
                 const isSelectionId = segments.length === 3 && segments[ 1 ] === 'selection'
 
                 if( !isSelectionId ) {
-                    messages.push( `AGT010 manifest.selections[${index}]: Must be a selection ID of form "namespace/selection/name", got "${id}"` )
+                    messages.push( `AGT030 manifest.selections[${index}]: Must be a selection ID of form "namespace/selection/name", got "${id}"` )
                 }
             } )
     }
@@ -257,7 +257,7 @@ class AgentManifestValidator {
         }
 
         if( typeof elicitation !== 'object' || Array.isArray( elicitation ) ) {
-            messages.push( 'AGT011 manifest.elicitation: Must be a plain object' )
+            messages.push( 'AGT031 manifest.elicitation: Must be a plain object' )
 
             return
         }
@@ -265,13 +265,13 @@ class AgentManifestValidator {
         const maxRounds = elicitation[ 'maxRounds' ]
 
         if( maxRounds === undefined || maxRounds === null ) {
-            messages.push( 'AGT011 manifest.elicitation.maxRounds: Missing required field' )
+            messages.push( 'AGT031 manifest.elicitation.maxRounds: Missing required field' )
 
             return
         }
 
         if( typeof maxRounds !== 'number' || !Number.isInteger( maxRounds ) || maxRounds <= 0 ) {
-            messages.push( `AGT011 manifest.elicitation.maxRounds: Must be a positive integer, got ${maxRounds}` )
+            messages.push( `AGT031 manifest.elicitation.maxRounds: Must be a positive integer, got ${maxRounds}` )
         }
     }
 }

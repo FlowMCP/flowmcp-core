@@ -6,7 +6,7 @@ const baseManifest = {
     name: 'test-agent',
     description: 'A test agent for validation',
     model: 'anthropic/claude-haiku-4-5',
-    version: 'flowmcp/3.0.0',
+    version: 'flowmcp/4.0.0',
     systemPrompt: 'You are a test agent.',
     tools: { 'etherscan-io/tool/getAbi': null },
     tests: [
@@ -72,12 +72,12 @@ describe( 'AgentManifestValidator (v4)', () => {
     } )
 
 
-    describe( 'AGT010 — selections[] validation', () => {
+    describe( 'AGT030 — selections[] validation', () => {
         it( 'accepts manifest without selections field (optional)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest: baseManifest } )
 
             expect( status ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) ) ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) ) ).toBe( false )
         } )
 
         it( 'accepts manifest with selections: null (treated as not set)', () => {
@@ -85,7 +85,7 @@ describe( 'AgentManifestValidator (v4)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) ) ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) ) ).toBe( false )
         } )
 
         it( 'accepts manifest with empty selections array', () => {
@@ -93,7 +93,7 @@ describe( 'AgentManifestValidator (v4)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) ) ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) ) ).toBe( false )
         } )
 
         it( 'accepts manifest with valid selection IDs', () => {
@@ -107,39 +107,39 @@ describe( 'AgentManifestValidator (v4)', () => {
             expect( messages ).toHaveLength( 0 )
         } )
 
-        it( 'AGT010: rejects when selections is a string instead of array', () => {
+        it( 'AGT030: rejects when selections is a string instead of array', () => {
             const manifest = { ...baseManifest, selections: 'nope' }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) && m.includes( 'Must be an array' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) && m.includes( 'Must be an array' ) ) ).toBe( true )
         } )
 
-        it( 'AGT010: rejects when selections is an object instead of array', () => {
+        it( 'AGT030: rejects when selections is an object instead of array', () => {
             const manifest = { ...baseManifest, selections: { id: 'evm-research/selection/x' } }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) && m.includes( 'Must be an array' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) && m.includes( 'Must be an array' ) ) ).toBe( true )
         } )
 
-        it( 'AGT010: rejects non-string entry in selections array', () => {
+        it( 'AGT030: rejects non-string entry in selections array', () => {
             const manifest = { ...baseManifest, selections: [ 123 ] }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) && m.includes( 'Must be type "string"' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) && m.includes( 'Must be type "string"' ) ) ).toBe( true )
         } )
 
-        it( 'AGT010: rejects ID without "/" separator', () => {
+        it( 'AGT030: rejects ID without "/" separator', () => {
             const manifest = { ...baseManifest, selections: [ 'invalid-id-no-slash' ] }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) ) ).toBe( true )
         } )
 
-        it( 'AGT010: rejects ID with wrong type segment (not "selection")', () => {
+        it( 'AGT030: rejects ID with wrong type segment (not "selection")', () => {
             const manifest = {
                 ...baseManifest,
                 selections: [ 'evm-research/tool/contract-analysis' ]
@@ -147,10 +147,10 @@ describe( 'AgentManifestValidator (v4)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) && m.includes( 'selection ID of form' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) && m.includes( 'selection ID of form' ) ) ).toBe( true )
         } )
 
-        it( 'AGT010: rejects two-segment ID (namespace/name without type)', () => {
+        it( 'AGT030: rejects two-segment ID (namespace/name without type)', () => {
             const manifest = {
                 ...baseManifest,
                 selections: [ 'evm-research/contract-analysis' ]
@@ -158,10 +158,10 @@ describe( 'AgentManifestValidator (v4)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) && m.includes( 'selection ID of form' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) && m.includes( 'selection ID of form' ) ) ).toBe( true )
         } )
 
-        it( 'AGT010: reports index of each invalid selection entry', () => {
+        it( 'AGT030: reports index of each invalid selection entry', () => {
             const manifest = {
                 ...baseManifest,
                 selections: [
@@ -179,12 +179,12 @@ describe( 'AgentManifestValidator (v4)', () => {
     } )
 
 
-    describe( 'AGT011 — elicitation validation', () => {
+    describe( 'AGT031 — elicitation validation', () => {
         it( 'accepts manifest without elicitation field (optional)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest: baseManifest } )
 
             expect( status ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) ) ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) ) ).toBe( false )
         } )
 
         it( 'accepts manifest with elicitation: null (treated as not set)', () => {
@@ -192,7 +192,7 @@ describe( 'AgentManifestValidator (v4)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) ) ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) ) ).toBe( false )
         } )
 
         it( 'accepts manifest with elicitation.maxRounds = 5', () => {
@@ -211,60 +211,60 @@ describe( 'AgentManifestValidator (v4)', () => {
             expect( messages ).toHaveLength( 0 )
         } )
 
-        it( 'AGT011: rejects elicitation when it is an array', () => {
+        it( 'AGT031: rejects elicitation when it is an array', () => {
             const manifest = { ...baseManifest, elicitation: [ 'a', 'b' ] }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'plain object' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'plain object' ) ) ).toBe( true )
         } )
 
-        it( 'AGT011: rejects elicitation when it is a string', () => {
+        it( 'AGT031: rejects elicitation when it is a string', () => {
             const manifest = { ...baseManifest, elicitation: 'invalid' }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'plain object' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'plain object' ) ) ).toBe( true )
         } )
 
-        it( 'AGT011: rejects elicitation with missing maxRounds', () => {
+        it( 'AGT031: rejects elicitation with missing maxRounds', () => {
             const manifest = { ...baseManifest, elicitation: {} }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'Missing required field' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'Missing required field' ) ) ).toBe( true )
         } )
 
-        it( 'AGT011: rejects elicitation.maxRounds = 0', () => {
+        it( 'AGT031: rejects elicitation.maxRounds = 0', () => {
             const manifest = { ...baseManifest, elicitation: { maxRounds: 0 } }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'positive integer' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'positive integer' ) ) ).toBe( true )
         } )
 
-        it( 'AGT011: rejects elicitation.maxRounds = -1', () => {
+        it( 'AGT031: rejects elicitation.maxRounds = -1', () => {
             const manifest = { ...baseManifest, elicitation: { maxRounds: -1 } }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'positive integer' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'positive integer' ) ) ).toBe( true )
         } )
 
-        it( 'AGT011: rejects elicitation.maxRounds = 1.5 (not integer)', () => {
+        it( 'AGT031: rejects elicitation.maxRounds = 1.5 (not integer)', () => {
             const manifest = { ...baseManifest, elicitation: { maxRounds: 1.5 } }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'positive integer' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'positive integer' ) ) ).toBe( true )
         } )
 
-        it( 'AGT011: rejects elicitation.maxRounds as string', () => {
+        it( 'AGT031: rejects elicitation.maxRounds as string', () => {
             const manifest = { ...baseManifest, elicitation: { maxRounds: '5' } }
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) && m.includes( 'positive integer' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) && m.includes( 'positive integer' ) ) ).toBe( true )
         } )
     } )
 
@@ -282,7 +282,7 @@ describe( 'AgentManifestValidator (v4)', () => {
             expect( messages ).toHaveLength( 0 )
         } )
 
-        it( 'reports both AGT010 and AGT011 when both fields are invalid', () => {
+        it( 'reports both AGT030 and AGT031 when both fields are invalid', () => {
             const manifest = {
                 ...baseManifest,
                 selections: 'wrong-type',
@@ -291,8 +291,8 @@ describe( 'AgentManifestValidator (v4)', () => {
             const { status, messages } = AgentManifestValidator.validate( { manifest } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT010' ) ) ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'AGT011' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT030' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'AGT031' ) ) ).toBe( true )
         } )
     } )
 } )
