@@ -7,7 +7,8 @@
     ".": "./src/index.mjs",
     "./legacy": "./src/legacy/index.mjs",
     "./v1": "./src/v1/index.mjs",
-    "./v2": "./src/v2/index.mjs"
+    "./v2": "./src/v2/index.mjs",
+    "./v4": "./src/v4/index.mjs"
   },
   "directories": {
     "test": "tests"

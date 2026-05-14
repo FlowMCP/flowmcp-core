@@ -68,7 +68,7 @@ describe( 'LibraryLoader', () => {
             const { allowlist } = LibraryLoader.getDefaultAllowlist()
 
             expect( Array.isArray( allowlist ) ).toBe( true )
-            expect( allowlist.length ).toBe( 18 )
+            expect( allowlist.length ).toBe( 21 )
 
             // Node.js Built-ins
             expect( allowlist ).toContain( 'zlib' )
@@ -87,6 +87,9 @@ describe( 'LibraryLoader', () => {
             expect( allowlist ).toContain( 'ccxt' )
             expect( allowlist ).toContain( 'indicatorts' )
             expect( allowlist ).toContain( 'yahoo-finance2' )
+            expect( allowlist ).toContain( 'trading-signals' )
+            expect( allowlist ).toContain( 'talib' )
+            expect( allowlist ).toContain( 'moment' )
 
             // Visualization
             expect( allowlist ).toContain( 'vega-lite' )
@@ -102,7 +105,7 @@ describe( 'LibraryLoader', () => {
 
             // Still NOT allowed
             expect( allowlist ).not.toContain( 'axios' )
-            expect( allowlist ).not.toContain( 'moment' )
+            expect( allowlist ).not.toContain( 'lodash' )
         } )
 
 
@@ -112,6 +115,83 @@ describe( 'LibraryLoader', () => {
             first.push( 'hacked' )
 
             expect( second ).not.toContain( 'hacked' )
+        } )
+    } )
+
+
+    describe( 'mergeAllowlist()', () => {
+        test( 'returns default allowlist when extraAllowlist is missing', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( {} )
+
+            expect( Array.isArray( allowlist ) ).toBe( true )
+            expect( allowlist.length ).toBe( 21 )
+            expect( allowlist ).toContain( 'trading-signals' )
+        } )
+
+
+        test( 'returns default allowlist when extraAllowlist is null', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( { extraAllowlist: null } )
+
+            expect( allowlist.length ).toBe( 21 )
+        } )
+
+
+        test( 'returns default allowlist when extraAllowlist is undefined', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( { extraAllowlist: undefined } )
+
+            expect( allowlist.length ).toBe( 21 )
+        } )
+
+
+        test( 'returns default allowlist when extraAllowlist is empty array', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( { extraAllowlist: [] } )
+
+            expect( allowlist.length ).toBe( 21 )
+        } )
+
+
+        test( 'merges extra entries into default allowlist', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( {
+                extraAllowlist: [ 'my-custom', 'another-lib' ]
+            } )
+
+            expect( allowlist.length ).toBe( 23 )
+            expect( allowlist ).toContain( 'my-custom' )
+            expect( allowlist ).toContain( 'another-lib' )
+            expect( allowlist ).toContain( 'trading-signals' )
+        } )
+
+
+        test( 'deduplicates entries when extra overlaps with default', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( {
+                extraAllowlist: [ 'moment', 'unique-extra' ]
+            } )
+
+            expect( allowlist.length ).toBe( 22 )
+            expect( allowlist.filter( ( lib ) => lib === 'moment' ).length ).toBe( 1 )
+            expect( allowlist ).toContain( 'unique-extra' )
+        } )
+
+
+        test( 'deduplicates duplicates within extra array', () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( {
+                extraAllowlist: [ 'dup', 'dup', 'other' ]
+            } )
+
+            expect( allowlist.length ).toBe( 23 )
+            expect( allowlist.filter( ( lib ) => lib === 'dup' ).length ).toBe( 1 )
+        } )
+
+
+        test( 'allows merged extra library to be loaded via load()', async () => {
+            const { allowlist } = LibraryLoader.mergeAllowlist( {
+                extraAllowlist: [ 'zod' ]
+            } )
+
+            const { libraries } = await LibraryLoader
+                .load( { requiredLibraries: [ 'zod' ], allowlist } )
+
+            expect( libraries['zod'] ).toBeDefined()
         } )
     } )
 } )

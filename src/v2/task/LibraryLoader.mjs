@@ -15,6 +15,9 @@ class LibraryLoader {
         'ccxt',
         'indicatorts',
         'yahoo-finance2',
+        'trading-signals',
+        'talib',
+        'moment',
         // Visualization
         'vega-lite',
         'vega',
@@ -64,6 +67,16 @@ class LibraryLoader {
         const allowlist = [ ...LibraryLoader.#defaultAllowlist ]
 
         return { allowlist }
+    }
+
+
+    static mergeAllowlist( { extraAllowlist } ) {
+        const isArray = Array.isArray( extraAllowlist )
+        const extra = isArray ? extraAllowlist : []
+        const merged = [ ...LibraryLoader.#defaultAllowlist, ...extra ]
+        const deduped = Array.from( new Set( merged ) )
+
+        return { allowlist: deduped }
     }
 }
 
