@@ -26,9 +26,17 @@ class ResourceDatabaseManager {
 
         const entries = Object.entries( resources === undefined || resources === null ? {} : resources )
 
+        const allowedSources = [ 'sqlite', 'markdown', 'http' ]
+
         entries
             .forEach( ( [ resourceName, resourceDef ] ) => {
                 const { source } = resourceDef
+
+                if( !allowedSources.includes( source ) ) {
+                    messages.push( `RES001: Resource "${resourceName}": source must be one of 'sqlite', 'markdown', or 'http', got "${source}"` )
+
+                    return
+                }
 
                 if( source === 'http' ) {
                     ResourceDatabaseManager.#handleHttpSource( {
@@ -41,7 +49,10 @@ class ResourceDatabaseManager {
                     return
                 }
 
-                if( source !== 'sqlite' ) {
+                if( source === 'markdown' ) {
+                    // Markdown resources are file-based and validated at this layer.
+                    // Full markdown loading (parameter-based access, sections, search)
+                    // is handled by downstream resource resolvers, not by this manager.
                     return
                 }
 

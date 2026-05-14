@@ -224,12 +224,25 @@ describe( 'ResourceDatabaseManager (v4)', () => {
         } )
 
 
-        it( 'skips resources with unknown source types', async () => {
+        it( 'rejects resources with unknown source types (RES001)', async () => {
             const result = await ResourceDatabaseManager.initialize( {
                 resources: {
                     weird: { source: 'unknown-type' }
                 },
                 schemaRef: 'test::case6'
+            } )
+
+            expect( result.status ).toBe( false )
+            expect( result.messages.some( ( m ) => m.startsWith( 'RES001' ) ) ).toBe( true )
+            expect( ResourceDatabaseManager.getConnectionCount().count ).toBe( 0 )
+        } )
+
+        it( 'accepts source: markdown without creating a connection', async () => {
+            const result = await ResourceDatabaseManager.initialize( {
+                resources: {
+                    docRef: { source: 'markdown' }
+                },
+                schemaRef: 'test::case7'
             } )
 
             expect( result.status ).toBe( true )
