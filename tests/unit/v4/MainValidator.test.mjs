@@ -115,19 +115,19 @@ describe( 'v4 MainValidator', () => {
         } )
     } )
 
-    describe( 'VAL108 — version pattern', () => {
+    describe( 'VAL014 — version pattern', () => {
         it( 'rejects version 3.0.0', () => {
             const main = buildValidMain( { version: '3.0.0' } )
             const { status, messages } = MainValidator.validate( { main } )
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL108' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL014' ) ) ).toBe( true )
         } )
 
         it( 'rejects version 2.0.0', () => {
             const main = buildValidMain( { version: '2.0.0' } )
             const { status, messages } = MainValidator.validate( { main } )
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL108' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL014' ) ) ).toBe( true )
         } )
 
         it( 'accepts version 4.0.0', () => {
@@ -146,23 +146,23 @@ describe( 'v4 MainValidator', () => {
             const main = buildValidMain( { version: '4.0' } )
             const { status, messages } = MainValidator.validate( { main } )
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL108' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL014' ) ) ).toBe( true )
         } )
     } )
 
-    describe( 'VAL109 — main.skills forbidden', () => {
+    describe( 'VAL016 — main.skills forbidden', () => {
         it( 'rejects when main.skills is present', () => {
             const main = buildValidMain( { skills: { foo: { file: 'foo.mjs' } } } )
             const { status, messages } = MainValidator.validate( { main } )
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL109' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL016' ) ) ).toBe( true )
         } )
 
         it( 'rejects when main.skills is an empty object', () => {
             const main = buildValidMain( { skills: {} } )
             const { status, messages } = MainValidator.validate( { main } )
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL109' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL016' ) ) ).toBe( true )
         } )
     } )
 

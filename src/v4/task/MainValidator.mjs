@@ -16,7 +16,7 @@ class MainValidator {
         }
 
         if( main[ 'skills' ] !== undefined ) {
-            messages.push( 'VAL109 main.skills: Forbidden in v4 — use Skills-only schemas via CLI skill registration instead' )
+            messages.push( 'VAL016 main.skills: Forbidden in v4.0.0 — Skills are namespace-, selection-, or agent-scoped (see 14-skills.md)' )
         }
 
         MainValidator.#validateTopLevel( { main, messages, warnings } )
@@ -77,12 +77,12 @@ class MainValidator {
 
         const namespacePattern = /^[a-z][a-z0-9-]*$/
         if( !namespacePattern.test( main[ 'namespace' ] ) ) {
-            messages.push( `main.namespace: Must match pattern /^[a-z][a-z0-9-]*$/, got "${main[ 'namespace' ]}"` )
+            messages.push( `VAL011 main.namespace: Must match pattern /^[a-z][a-z0-9-]*$/, got "${main[ 'namespace' ]}"` )
         }
 
         const versionPattern = /^4\.\d+\.\d+$/
         if( !versionPattern.test( main[ 'version' ] ) ) {
-            messages.push( `VAL108 main.version: Must match pattern /^4\\.\\d+\\.\\d+$/, got "${main[ 'version' ]}"` )
+            messages.push( `VAL014 main.version: Must match pattern /^4\\.\\d+\\.\\d+$/, got "${main[ 'version' ]}"` )
         }
 
         if( main[ 'root' ] === '' ) {
