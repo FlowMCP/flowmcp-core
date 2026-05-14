@@ -56,11 +56,11 @@ describe( 'GradeReporter', () => {
 
     describe( 'grade()', () => {
         const validScores = [
-            { dimension: 'whenToUse', score: 4.5 },
-            { dimension: 'parameters', score: 4.0 }
+            { dimension: 'whenToUse', score: 5.0 },
+            { dimension: 'parameters', score: 4.5 }
         ]
 
-        it( 'returns grade A for PASS + averageScore >= 4.0', () => {
+        it( 'returns grade A for PASS + averageScore >= 4.5', () => {
             const { grade } = GradeReporter.grade( {
                 schemaId: 'etherscan-io/contracts',
                 deterministicResult: { status: 'PASS' },
@@ -94,7 +94,7 @@ describe( 'GradeReporter', () => {
             expect( grade ).toBe( 'F' )
         } )
 
-        it( 'returns grade B for PASS + 3.0 <= score < 4.0', () => {
+        it( 'returns grade B for PASS + 3.5 <= score < 4.5', () => {
             const { grade } = GradeReporter.grade( {
                 schemaId: 'etherscan-io/contracts',
                 deterministicResult: { status: 'PASS' },
@@ -104,7 +104,7 @@ describe( 'GradeReporter', () => {
             expect( grade ).toBe( 'B' )
         } )
 
-        it( 'returns grade C for PASS + 2.0 <= score < 3.0', () => {
+        it( 'returns grade C for PASS + 2.5 <= score < 3.5', () => {
             const { grade } = GradeReporter.grade( {
                 schemaId: 'etherscan-io/contracts',
                 deterministicResult: { status: 'PASS' },
@@ -114,7 +114,7 @@ describe( 'GradeReporter', () => {
             expect( grade ).toBe( 'C' )
         } )
 
-        it( 'returns grade D for PASS + score < 2.0', () => {
+        it( 'returns grade D for PASS + score < 2.5', () => {
             const { grade } = GradeReporter.grade( {
                 schemaId: 'etherscan-io/contracts',
                 deterministicResult: { status: 'PASS' },
@@ -167,8 +167,8 @@ describe( 'GradeReporter', () => {
             } )
             expect( report.deterministic ).toEqual( det )
             expect( report.probabilistic.scores ).toEqual( validScores )
-            expect( report.probabilistic.averageScore ).toBeCloseTo( 4.25, 5 )
-            expect( report.averageScore ).toBeCloseTo( 4.25, 5 )
+            expect( report.probabilistic.averageScore ).toBeCloseTo( 4.75, 5 )
+            expect( report.averageScore ).toBeCloseTo( 4.75, 5 )
         } )
 
         it( 'throws when schemaId has 2 slashes (Primitive-ID rejected)', () => {

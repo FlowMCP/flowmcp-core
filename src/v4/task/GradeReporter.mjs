@@ -1,7 +1,7 @@
 const GRADE_THRESHOLDS = [
-    [ 'A', 4.0 ],
-    [ 'B', 3.0 ],
-    [ 'C', 2.0 ]
+    [ 'A', 4.5 ],
+    [ 'B', 3.5 ],
+    [ 'C', 2.5 ]
 ]
 
 const EVAL_DIMENSIONS = [ 'whenToUse', 'parameters' ]
