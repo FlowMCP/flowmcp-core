@@ -207,3 +207,177 @@ No code changes needed for v1 schemas. They will work but with limitations:
 - [ ] Add `output` schemas (optional but recommended)
 - [ ] Add `sharedLists` references where applicable
 - [ ] Update consumer code to use `FlowMCP.loadSchema()` + `FlowMCP.fetch()`
+
+---
+
+# Migration Guide: v3 to v4
+
+## Overview
+
+FlowMCP Core v4 implements the FlowMCP Specification 4.0.0. v4 is shipped as the named export `flowmcp-core/v4` while v2 stays the default. The pipeline introduces selections, grade reporting, placeholder resolution, capture-flow output schemas, and a mandatory `meta` block per tool.
+
+## Breaking Changes
+
+- `main.skills` is **forbidden** — skills are top-level primitives. Use `main.tools` (with tool definitions) and a separate top-level `skills` export.
+- A `meta` block per tool is **mandatory**. It has six required fields: `isReadOnly`, `isConcurrencySafe`, `isDestructive`, `searchHint`, `aliases`, `alwaysLoad`.
+- `main.version` must be `'4.0.0'` (was `'3.0.0'`).
+- Every skill must declare `whenToUse`, `type`, and `version: 'flowmcp/4.0.0'`.
+- Namespace regex relaxed to `^[a-z][a-z0-9-]*$` (was `^[a-z]+$`).
+
+## Import Paths
+
+```javascript
+// v4 (new) — Pipeline and supporting classes
+import * as v4 from 'flowmcp-core/v4'
+
+// Tree-shakable imports
+import { Pipeline, GradeReporter, MetaGenerator } from 'flowmcp-core/v4'
+
+// v2 (default) — unchanged
+import * as v2 from 'flowmcp-core/v2'
+import { FlowMCP } from 'flowmcp-core/v2'
+```
+
+## Schema Format
+
+### Before (v3)
+
+```javascript
+export const main = {
+    namespace: 'etherscan',
+    name: 'Etherscan',
+    description: 'Etherscan API',
+    version: '3.0.0',
+    root: 'https://api.etherscan.io',
+    tools: {
+        getBalance: {
+            method: 'GET',
+            path: '/api?module=account&action=balance',
+            description: 'Get balance.',
+            parameters: []
+        }
+    },
+    skills: {
+        // Nested skills — REMOVED in v4
+        'lookup-balance': {
+            content: 'Use {{tool:etherscan/getBalance}}.'
+        }
+    }
+}
+```
+
+### After (v4)
+
+```javascript
+export const main = {
+    namespace: 'etherscan',
+    name: 'Etherscan',
+    description: 'Etherscan API',
+    version: '4.0.0',
+    root: 'https://api.etherscan.io',
+    tools: {
+        getBalance: {
+            method: 'GET',
+            path: '/api?module=account&action=balance',
+            description: 'Get balance.',
+            parameters: [],
+            meta: {
+                isReadOnly: true,
+                isConcurrencySafe: true,
+                isDestructive: false,
+                searchHint: 'fetch ETH balance for an address',
+                aliases: [],
+                alwaysLoad: false
+            },
+            tests: [
+                { _description: 'happy path' }
+            ]
+        }
+    }
+}
+
+// Skills are a top-level export — never nested in main
+export const skills = {
+    'lookup-balance': {
+        version: 'flowmcp/4.0.0',
+        type: 'namespace-skill',
+        whenToUse: 'When the user wants to lookup an ETH balance.',
+        content: 'Use {{tool:etherscan/getBalance}}.'
+    }
+}
+```
+
+## Required `meta` Fields per Tool
+
+| Field | Type | Heuristic Default |
+|-------|------|-------------------|
+| `isReadOnly` | boolean | `method === 'GET'` |
+| `isConcurrencySafe` | boolean | Defaults to `isReadOnly` |
+| `isDestructive` | boolean | Defaults to `!isReadOnly` |
+| `searchHint` | string | First ~100 chars from `description` + tags |
+| `aliases` | string[] | Empty array |
+| `alwaysLoad` | boolean | `false` |
+
+### Migration Helper
+
+```javascript
+import { MetaGenerator } from 'flowmcp-core/v4'
+
+const { tools: toolsWithMeta } = MetaGenerator
+    .generateForSchema( { tools: main.tools } )
+
+main.tools = toolsWithMeta
+```
+
+`MetaGenerator.generateForSchema({ tools })` walks each tool, infers the six fields via heuristics, and returns a new tools object with `meta` blocks filled in. Inspect the result and override any value that does not match your API semantics before committing the schema.
+
+## Consumer Integration
+
+### Before (v3)
+
+```javascript
+import { FlowMCP } from 'flowmcp-core'
+
+const { status, main, handlerMap } = await FlowMCP.loadSchema( {
+    filePath: './schemas/etherscan.mjs'
+} )
+```
+
+### After (v4)
+
+```javascript
+import { Pipeline } from 'flowmcp-core/v4'
+
+const result = await Pipeline
+    .load( {
+        filePath: './schemas/etherscan.mjs',
+        listsDir: './schemas/shared/lists',
+        allowlist: null,
+        selectionFiles: [],
+        prefillTimeout: 1000,
+        fetchFn: null,
+        userParams: {}
+    } )
+
+if( !result.status ) {
+    console.error( 'Pipeline failed:', result.messages )
+}
+
+// result fields: main, handlerMap, resourceHandlerMap, sharedLists,
+// libraries, skills, selections, prompts, contentMap, prefillResults, warnings
+```
+
+## Skills-only Schemas (kba, handelsregister, etsi-ipr)
+
+Schemas with `tools: {}` that relied on `main.skills` for browser automation have been migrated to **CLI-Skills** (Option A — outside the Core pipeline). They are no longer processed by the v4 Core pipeline. See Memo 028 (Schema Migration) for repository-level details.
+
+## Migration Checklist
+
+- [ ] Bump `main.version` from `'3.0.0'` to `'4.0.0'`
+- [ ] Move `main.skills` out of `main` into a top-level `export const skills`
+- [ ] Add `version: 'flowmcp/4.0.0'`, `type`, and `whenToUse` to each skill
+- [ ] Add a `meta` block (6 fields) to every entry under `main.tools`
+- [ ] Optional: run `MetaGenerator.generateForSchema({ tools })` to bootstrap the meta blocks
+- [ ] Switch imports from `flowmcp-core` to `flowmcp-core/v4` for the new pipeline
+- [ ] Replace `FlowMCP.loadSchema()` calls with `Pipeline.load()` and inspect the result object
+- [ ] Verify the pipeline run with `npm test` against your fixtures

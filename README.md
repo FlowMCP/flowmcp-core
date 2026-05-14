@@ -6,950 +6,277 @@ A comprehensive framework for adapting existing web APIs into a standardized Mod
 
 ## Features
 
-- **Universal API Adaptation**: Convert any REST API into MCP-compatible tools with minimal configuration
-- **Schema-Driven Development**: Structured schema definitions with automatic validation and interface generation
-- **Advanced Filtering System**: Sophisticated namespace, tag, and route filtering with case-insensitive matching
-- **Built-in Testing Framework**: Comprehensive test generation and execution for all API endpoints
-- **Native HTTP Client**: Modern fetch-based HTTP client with intelligent error handling
-- **Zod Integration**: Automatic TypeScript/Zod interface generation from schemas
-- **Server Tool Generation**: Automatic MCP server tool creation and activation
-- **Command Line Interface**: Full CLI support with argument parsing and configuration
-- **Comprehensive Validation**: Multi-layer validation for schemas, parameters, and responses
-- **Performance Optimized**: Efficient filtering, caching, and resource management
+- **v4 Pipeline**: 16-step orchestrated load with security scan, legacy adapter, validators, library loader, selections, handlers, skills, placeholder resolution, resource DB, and prompts
+- **Selections (5th Primitive)**: First-class operator-curated tool subsets via `SelectionLoader` and `SelectionValidator`
+- **Grade Report**: Automated A–F schema quality grading via `GradeReporter` (eval prompts + deterministic scoring)
+- **Placeholder Resolution**: 12 placeholder types resolved against a typed catalog (tools, resources, prompts, skills, sharedLists, inputs, prefill)
+- **Capture Flow**: Live response capture with `OutputSchemaGenerator` to auto-derive output schemas from real API responses
+- **One-Shot Skills**: `SkillContentGenerator` renders self-contained skill content from schema + sharedLists
+- **Meta-Block per Tool**: Every v4 tool declares `isReadOnly`, `isConcurrencySafe`, `isDestructive`, `searchHint`, `aliases`, `alwaysLoad` — generated/validated via `MetaGenerator`
+- **Skills-only Sonderpfad**: Schemas with `tools: {}` are recognised after validation and short-circuit the pipeline (Schritte 7–9, 11–15 skipped)
+- **Library Loading**: Allowlisted runtime library injection through `LibraryLoader` (with `mergeAllowlist`)
+- **Resource Database Manager**: SQLite-backed resource initialisation via `ResourceDatabaseManager`
+- **Security Scanner**: Static scan for forbidden patterns (eval, imports) before any module is loaded
+- **Legacy Compatibility**: v1 and v2 APIs remain available under `flowmcp-core/legacy`, `flowmcp-core/v1`, `flowmcp-core/v2`
 
 ## Table of Contents
 
 - [FlowMCP Core](#flowmcp-core)
   - [Features](#features)
   - [Table of Contents](#table-of-contents)
-  - [Quick Start](#quick-start)
-  - [Methods](#methods)
-    - [.getArgvParameters()](#getargvparameters)
-    - [.filterArrayOfSchemas()](#filterarrayofschemas)
-    - [.activateServerTools()](#activateservertools)
-    - [.activateServerTool()](#activateservertool)
-    - [.prepareServerTool()](#prepareservertool)
-    - [.getZodInterfaces()](#getzodinterfaces)
-    - [.getAllTests()](#getalltests)
-    - [.validateSchema()](#validateschema)
-    - [.fetch()](#fetch)
-    - [.prepareActivations()](#prepareactivations)
-  - [Schema Structure](#schema-structure)
+  - [Quick Start (v4)](#quick-start-v4)
+  - [v4 Public API](#v4-public-api)
+  - [v4 Schema Structure](#v4-schema-structure)
+  - [Legacy API (v1 / v2)](#legacy-api-v1--v2)
   - [Error Handling](#error-handling)
   - [Testing & Validation](#testing--validation)
   - [Performance & Optimization](#performance--optimization)
   - [Documentation](#documentation)
 
-## Quick Start
+## Quick Start (v4)
 
 ```js
-import { FlowMCP } from 'flowmcp-core'
+import * as v4 from 'flowmcp-core/v4'
 
-// Load and validate a v2 schema
-const { status, main, handlerMap } = await FlowMCP.loadSchema( {
-    filePath: './schemas/cryptocompare.mjs'
-} )
+const { Pipeline } = v4
 
-if( !status ) {
-    console.error( 'Schema loading failed' )
+// v4 Pipeline — loads, validates, and returns a result-Objekt
+const result = await Pipeline
+    .load( {
+        filePath: './schemas/etherscan-io/etherscan.mjs',
+        listsDir: './schemas/shared/lists',
+        allowlist: null,
+        selectionFiles: [],
+        prefillTimeout: 1000,
+        fetchFn: null,
+        userParams: {}
+    } )
+
+if( !result.status ) {
+    console.error( 'Pipeline failed:', result.messages )
+    return
 }
 
-// Execute API request
-const result = await FlowMCP.fetch( {
-    main,
-    handlerMap,
-    userParams: { fsym: 'BTC', tsyms: 'USD' },
-    serverParams: {},
-    routeName: 'getCurrentPrice'
-} )
-
-console.log( 'Bitcoin price:', result.dataAsString )
+// Result object contains all primitives:
+//   main, handlerMap, resourceHandlerMap, sharedLists, libraries,
+//   skills, selections, prompts, contentMap, prefillResults, warnings
+console.log( 'Tools available:', Object.keys( result.main.tools ) )
+console.log( 'Skills loaded:', Object.keys( result.skills ) )
+console.log( 'Warnings:', result.warnings )
 ```
 
-### v2 Schema Format
+### Grade Report
+
+```js
+import * as v4 from 'flowmcp-core/v4'
+
+const { GradeReporter } = v4
+
+const { prompts } = GradeReporter
+    .buildEvalPrompts( { schema: result.main, skill: null } )
+
+const { grade, scoreSummary } = GradeReporter
+    .grade( {
+        schemaId: 'etherscan/4.0.0',
+        deterministicResult: { passed: true },
+        scores: { coverage: 90, accuracy: 85, clarity: 80 },
+        validatorVersion: '4.0.0'
+    } )
+
+console.log( 'Grade:', grade )         // 'A' | 'B' | 'C' | 'D' | 'F'
+console.log( 'Summary:', scoreSummary )
+```
+
+## v4 Public API
+
+The v4 API is exported via `flowmcp-core/v4`. Each module is a focused, static class with a small public surface (1–3 methods per module). Internal helpers stay private.
+
+| Module | Public Methods |
+|--------|----------------|
+| `Pipeline` | `load({ filePath, listsDir, allowlist, selectionFiles, prefillTimeout, fetchFn, userParams })` |
+| `MainValidator` | `validate({ main })` |
+| `SelectionLoader` | `load({ filePath })` |
+| `SelectionValidator` | `validate({ selection })` |
+| `PlaceholderResolver` | `resolve({ content, catalog, sharedLists, inputs, prefillResults })` |
+| `PrefillExecutor` | `execute({ skill, userParams, fetchFn, timeout })` |
+| `MetaGenerator` | `generate({ tool })`, `generateForSchema({ tools })` |
+| `GradeReporter` | `buildEvalPrompts({ schema, skill })`, `grade({ schemaId, deterministicResult, scores, validatorVersion })` |
+| `OutputSchemaGenerator` | `generateFromResponse({ response, mimeType, schemaId })` |
+| `SkillContentGenerator` | `generate({ schemas, sharedLists })` |
+| `SkillValidator` | `validate({ skills, tools, resources })` |
+| `AgentManifestValidator` | `validate({ manifest })` |
+| `IdResolver` | `resolve({ reference, catalog })` |
+| `LibraryLoader` | `load({ requiredLibraries, allowlist })`, `getDefaultAllowlist()`, `mergeAllowlist({ extraAllowlist })` |
+| `ResourceDatabaseManager` | `initialize({ resources, schemaRef, schemaDir })` |
+
+### Pipeline.load() Return Shape
+
+```js
+{
+    status: true,                // Boolean — overall success
+    messages: [],                // Error messages when status === false
+    main,                        // The validated v4 `main` object
+    handlerMap: {},              // Per-tool handler functions
+    resourceHandlerMap: {},      // Per-resource handler functions
+    sharedLists: {},             // Resolved shared lists
+    libraries: {},               // Loaded libraries (allowlist-filtered)
+    skills: {},                  // Skills with resolved content
+    selections: {},              // Loaded selection files
+    prompts: {},                 // Loaded prompts
+    contentMap: null,            // Map produced by SkillContentGenerator
+    prefillResults: null,        // Map produced by PrefillExecutor
+    warnings: []                 // Non-fatal warnings
+}
+```
+
+### Skills-only Sonderpfad
+
+When `Object.keys( main.tools ).length === 0` the pipeline takes a Sonderpfad after step 6: HandlerFactory, SelectionLoader, PrefillExecutor, PlaceholderResolver, ResourceValidator, and PromptLoader are all skipped. `handlerMap` and `resourceHandlerMap` return `{}`. Note: `main.skills` is forbidden in v4 — use the top-level `skills` export instead. The Sonderpfad therefore returns `skills: {}` for v4 schemas.
+
+## v4 Schema Structure
+
+A v4 schema declares `export const main` with `version: '4.0.0'` and (optionally) `export const handlers` as a factory. Every entry under `tools` must carry a complete `meta` block.
+
+### Required Fields
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `namespace` | string | Unique namespace, regex `^[a-z][a-z0-9-]*$` |
+| `name` | string | Human-readable display name |
+| `description` | string | Short summary of the API |
+| `version` | string | Must equal `'4.0.0'` |
+| `root` | string | Base URL for the API |
+| `tools` | object | Map of tool definitions (may be empty for Skills-only schemas) |
+
+### Required `meta` Fields per Tool
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `isReadOnly` | boolean | True for GET / read-only access |
+| `isConcurrencySafe` | boolean | Defaults to `isReadOnly` |
+| `isDestructive` | boolean | Defaults to `!isReadOnly` |
+| `searchHint` | string | Short hint for tool search |
+| `aliases` | string[] | Alternative tool names |
+| `alwaysLoad` | boolean | Force-load even when filtered |
+
+Use `MetaGenerator.generateForSchema({ tools })` to derive an initial `meta` block via heuristics.
+
+### Example v4 Schema
 
 ```js
 export const main = {
-    namespace: 'cryptocompare',
-    name: 'CryptoCompare',
-    description: 'CryptoCompare price API',
-    version: '2.0.0',
-    docs: [ 'https://min-api.cryptocompare.com/documentation' ],
-    tags: [ 'crypto', 'price' ],
-    root: 'https://min-api.cryptocompare.com',
-    requiredServerParams: [],
-    routes: {
-        getCurrentPrice: {
+    namespace: 'etherscan',
+    name: 'Etherscan',
+    description: 'Etherscan REST API.',
+    version: '4.0.0',
+    docs: [ 'https://docs.etherscan.io' ],
+    tags: [ 'evm', 'blockchain' ],
+    root: 'https://api.etherscan.io',
+    requiredServerParams: [ 'API_KEY' ],
+    tools: {
+        getBalance: {
             method: 'GET',
-            path: '/data/price',
-            description: 'Get current price for a cryptocurrency pair.',
-            parameters: {
-                fsym: { type: 'string', required: true, description: 'From symbol (e.g. BTC)' },
-                tsyms: { type: 'string', required: true, description: 'To symbols (e.g. USD,EUR)' }
-            }
-        }
-    }
-}
-```
-
-## Methods
-
-### .getArgvParameters()
-
-Parses command line arguments into structured configuration for schema filtering and processing.
-
-**Method**
-
-```js
-FlowMCP.getArgvParameters({ argv, includeNamespaces = [], excludeNamespaces = [], activateTags = [] })
-```
-
-| Key                | Type    | Default | Description                                          | Required |
-|--------------------|---------|---------|------------------------------------------------------|----------|
-| `argv`             | array   |         | Process arguments array (typically `process.argv`)   | Yes      |
-| `includeNamespaces`| array   | `[]`    | Default namespaces to include                        | No       |
-| `excludeNamespaces`| array   | `[]`    | Default namespaces to exclude                        | No       |
-| `activateTags`     | array   | `[]`    | Default tags to activate                             | No       |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-// Command line: node script.mjs --source=api --includeNamespaces=crypto,finance --activateTags=price
-const config = FlowMCP.getArgvParameters({
-    argv: process.argv,
-    includeNamespaces: ['default'],
-    excludeNamespaces: [],
-    activateTags: []
-})
-
-console.log('Parsed configuration:', config)
-```
-
-**Returns**
-
-```js
-{
-    source: 'api',
-    includeNamespaces: ['crypto', 'finance'],
-    excludeNamespaces: [],
-    activateTags: ['price']
-}
-```
-
-### .filterArrayOfSchemas()
-
-Advanced filtering system for schema arrays with namespace, tag, and route-level filtering capabilities. Supports case-insensitive matching and comprehensive error collection.
-
-> 📋 **For complete technical specification and implementation details, see [FILTERING.md](./FILTERING.md)**
-
-**Method**
-
-```js
-FlowMCP.filterArrayOfSchemas({ arrayOfSchemas, includeNamespaces, excludeNamespaces, activateTags })
-```
-
-| Key                | Type    | Default | Description                                                           | Required |
-|--------------------|---------|---------|-----------------------------------------------------------------------|----------|
-| `arrayOfSchemas`   | array   |         | Array of schema objects to filter                                    | Yes      |
-| `includeNamespaces`| array   |         | Namespaces to include (takes precedence over exclude)                | Yes      |
-| `excludeNamespaces`| array   |         | Namespaces to exclude (ignored if include is specified)              | Yes      |
-| `activateTags`     | array   |         | Mixed array of tags and route filters (`tag` or `namespace.route`)   | Yes      |
-
-**Note**: If any `activateTags` are invalid (non-existent tags, routes, or namespaces), the method throws an error with detailed information about all invalid entries. This ensures fail-fast behavior and prevents partial filtering results.
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const schemas = [
-    { namespace: 'cryptocompare', tags: ['crypto', 'price'], routes: { getPrice: {}, getHistory: {} } },
-    { namespace: 'coingecko', tags: ['crypto', 'market'], routes: { getCoins: {}, getMarkets: {} } },
-    { namespace: 'newsapi', tags: ['news'], routes: { getNews: {}, getSources: {} } }
-]
-
-const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas({
-    arrayOfSchemas: schemas,
-    includeNamespaces: ['cryptocompare', 'coingecko'],
-    excludeNamespaces: [],
-    activateTags: [
-        'crypto',                           // Include schemas with 'crypto' tag
-        'cryptocompare.getPrice',           // Include only getPrice from cryptocompare
-        'coingecko.!getMarkets'            // Exclude getMarkets from coingecko
-    ]
-})
-
-console.log('Filtered schemas:', filteredArrayOfSchemas.length)
-
-// Error handling for invalid activateTags
-try {
-    FlowMCP.filterArrayOfSchemas({
-        arrayOfSchemas: schemas,
-        includeNamespaces: [],
-        excludeNamespaces: [],
-        activateTags: ['nonExistentTag', 'invalidNamespace.route']
-    })
-} catch (error) {
-    console.error(error.message)
-    // Output: Invalid activateTags found:
-    //         - Tag 'nonExistentTag' not found in any schema  
-    //         - Namespace 'invalidNamespace' not found in schemas
-}
-```
-
-**Returns**
-
-```js
-{
-    filteredArrayOfSchemas: [
-        {
-            namespace: 'cryptocompare',
-            tags: ['crypto', 'price'],
-            routes: { getPrice: {} }  // Only getPrice route included
-        },
-        {
-            namespace: 'coingecko', 
-            tags: ['crypto', 'market'],
-            routes: { getCoins: {} }  // getMarkets excluded
-        }
-    ]
-}
-```
-
-### .activateServerTools()
-
-Bulk activation of MCP server tools from a schema definition. Automatically generates and registers all routes as server tools with proper validation and error handling.
-
-**Method**
-
-```js
-FlowMCP.activateServerTools({ server, schema, serverParams, validate = true, silent = true })
-```
-
-| Key            | Type     | Default | Description                                          | Required |
-|----------------|----------|---------|------------------------------------------------------|----------|
-| `server`       | object   |         | MCP Server instance to register tools with          | Yes      |
-| `schema`       | object   |         | Schema definition containing routes                  | Yes      |
-| `serverParams` | object   |         | Server-specific parameters for API authentication   | Yes      |
-| `validate`     | boolean  | `true`  | Enable input validation before activation           | No       |
-| `silent`       | boolean  | `true`  | Suppress console output during activation           | No       |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-
-const server = new Server({
-    name: 'crypto-api-server',
-    version: '1.0.0'
-}, {
-    capabilities: { tools: {} }
-})
-
-const schema = {
-    namespace: 'cryptocompare',
-    root: 'https://api.cryptocompare.com',
-    routes: {
-        getCurrentPrice: { /* route definition */ },
-        getHistoricalData: { /* route definition */ },
-        getExchangeList: { /* route definition */ }
-    }
-}
-
-const serverParams = {
-    apiKey: process.env.CRYPTOCOMPARE_API_KEY
-}
-
-const { mcpTools } = FlowMCP.activateServerTools({
-    server,
-    schema,
-    serverParams,
-    validate: true,
-    silent: false
-})
-
-console.log('Activated tools:', Object.keys(mcpTools))
-// Output: ['cryptocompare__getCurrentPrice', 'cryptocompare__getHistoricalData', 'cryptocompare__getExchangeList']
-```
-
-**Returns**
-
-```js
-{
-    mcpTools: {
-        'cryptocompare__getCurrentPrice': MCPTool,
-        'cryptocompare__getHistoricalData': MCPTool,
-        'cryptocompare__getExchangeList': MCPTool
-    }
-}
-```
-
-### .activateServerTool()
-
-Activates a single MCP server tool from a specific schema route. Provides granular control over individual tool registration.
-
-**Method**
-
-```js
-FlowMCP.activateServerTool({ server, schema, routeName, serverParams, validate = true })
-```
-
-| Key            | Type     | Default | Description                                        | Required |
-|----------------|----------|---------|----------------------------------------------------|----------|
-| `server`       | object   |         | MCP Server instance to register tool with         | Yes      |
-| `schema`       | object   |         | Schema definition containing the route             | Yes      |
-| `routeName`    | string   |         | Name of the specific route to activate             | Yes      |
-| `serverParams` | object   |         | Server-specific parameters for API authentication | Yes      |
-| `validate`     | boolean  | `true`  | Enable input validation before activation         | No       |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const { toolName, mcpTool } = FlowMCP.activateServerTool({
-    server,
-    schema,
-    routeName: 'getCurrentPrice',
-    serverParams: { apiKey: 'your-api-key' },
-    validate: true
-})
-
-console.log('Activated tool:', toolName)
-// Output: 'cryptocompare__getCurrentPrice'
-```
-
-**Returns**
-
-```js
-{
-    toolName: 'cryptocompare__getCurrentPrice',
-    mcpTool: MCPToolInstance
-}
-```
-
-### .prepareServerTool()
-
-Prepares server tool configuration without activating it. Useful for testing, inspection, or custom tool registration workflows.
-
-**Method**
-
-```js
-FlowMCP.prepareServerTool({ schema, serverParams, routeName, validate = true })
-```
-
-| Key            | Type     | Default | Description                                        | Required |
-|----------------|----------|---------|----------------------------------------------------|----------|
-| `schema`       | object   |         | Schema definition containing the route             | Yes      |
-| `serverParams` | object   |         | Server-specific parameters for API authentication | Yes      |
-| `routeName`    | string   |         | Name of the specific route to prepare              | Yes      |
-| `validate`     | boolean  | `true`  | Enable input validation before preparation        | No       |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const toolConfig = FlowMCP.prepareServerTool({
-    schema,
-    serverParams: { apiKey: 'your-api-key' },
-    routeName: 'getCurrentPrice',
-    validate: true
-})
-
-console.log('Tool name:', toolConfig.toolName)
-console.log('Description:', toolConfig.description)
-console.log('Zod schema:', toolConfig.zod)
-// Function is ready to use: await toolConfig.func({ fsym: 'BTC', tsyms: 'USD' })
-```
-
-**Returns**
-
-```js
-{
-    toolName: 'cryptocompare__getCurrentPrice',
-    description: 'Get current price data from CryptoCompare API',
-    zod: ZodSchema,
-    func: async (userParams) => {
-        // Configured function ready for execution
-        return { content: [{ type: "text", text: "Result: {...}" }] }
-    }
-}
-```
-
-### .getZodInterfaces()
-
-Generates TypeScript-compatible Zod validation schemas from FlowMCP schema definitions. Enables type-safe integration and validation.
-
-**Method**
-
-```js
-FlowMCP.getZodInterfaces({ schema })
-```
-
-| Key      | Type   | Default | Description                              | Required |
-|----------|--------|---------|------------------------------------------|----------|
-| `schema` | object |         | Schema definition to generate types for | Yes      |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const schema = {
-    namespace: 'cryptocompare',
-    routes: {
-        getCurrentPrice: {
-            parameters: [
-                { position: { key: 'fsym' }, z: 'string()' },
-                { position: { key: 'tsyms' }, z: 'string()' }
-            ]
-        },
-        getHistoricalData: {
-            parameters: [
-                { position: { key: 'fsym' }, z: 'string()' },
-                { position: { key: 'tsym' }, z: 'string()' },
-                { position: { key: 'limit' }, z: 'number().optional()' }
+            path: '/api?module=account&action=balance',
+            description: 'Return the balance for an address.',
+            parameters: [],
+            meta: {
+                isReadOnly: true,
+                isConcurrencySafe: true,
+                isDestructive: false,
+                searchHint: 'fetch ETH balance for an address',
+                aliases: [],
+                alwaysLoad: false
+            },
+            tests: [
+                { _description: 'happy path' }
             ]
         }
     }
 }
 
-const zodInterfaces = FlowMCP.getZodInterfaces({ schema })
-
-console.log('Available interfaces:', Object.keys(zodInterfaces))
-// Output: ['getCurrentPrice', 'getHistoricalData']
-
-// Use the generated Zod schemas for validation
-const result = zodInterfaces.getCurrentPrice.parse({ fsym: 'BTC', tsyms: 'USD' })
-```
-
-**Returns**
-
-```js
-{
-    getCurrentPrice: z.object({
-        fsym: z.string(),
-        tsyms: z.string()
-    }),
-    getHistoricalData: z.object({
-        fsym: z.string(),
-        tsym: z.string(), 
-        limit: z.number().optional()
-    })
-}
-```
-
-### .getAllTests()
-
-Extracts comprehensive test cases from schema definitions. Automatically generates test scenarios for all routes with proper parameter combinations.
-
-**Method**
-
-```js
-FlowMCP.getAllTests({ schema })
-```
-
-| Key      | Type   | Default | Description                                | Required |
-|----------|--------|---------|--------------------------------------------|----------|
-| `schema` | object |         | Schema definition to generate tests from  | Yes      |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const schema = {
-    namespace: 'cryptocompare',
-    routes: {
-        getCurrentPrice: {
-            parameters: [
-                { position: { key: 'fsym' }, z: 'string()', test: 'BTC' },
-                { position: { key: 'tsyms' }, z: 'string()', test: 'USD,EUR' }
-            ]
-        },
-        getExchangeList: {
-            parameters: []
+export const handlers = ( { sharedLists, libraries } ) => ( {
+    getBalance: {
+        postRequest: async ( { response } ) => {
+            return { response: { balance: response[ 'result' ] } }
         }
     }
-}
+} )
 
-const tests = FlowMCP.getAllTests({ schema })
-
-console.log('Generated tests:', tests.length)
-tests.forEach(test => {
-    console.log(`${test.routeName}:`, test.userParams)
-})
-
-// Execute all tests
-for (const test of tests) {
-    const result = await FlowMCP.fetch({
-        schema,
-        userParams: test.userParams,
-        serverParams: {},
-        routeName: test.routeName
-    })
-    
-    console.log(`${test.routeName}: ${result.status ? 'PASS' : 'FAIL'}`)
-}
-```
-
-**Returns**
-
-```js
-[
-    {
-        routeName: 'getCurrentPrice',
-        userParams: { fsym: 'BTC', tsyms: 'USD,EUR' }
-    },
-    {
-        routeName: 'getExchangeList', 
-        userParams: {}
-    }
-]
-```
-
-### .validateSchema()
-
-Comprehensive validation of FlowMCP schema structure. Checks for required fields, proper formatting, parameter consistency, and route definitions.
-
-**Method**
-
-```js
-FlowMCP.validateSchema({ schema })
-```
-
-| Key      | Type   | Default | Description                      | Required |
-|----------|--------|---------|----------------------------------|----------|
-| `schema` | object |         | Schema definition to validate    | Yes      |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const schema = {
-    namespace: 'cryptocompare',
-    root: 'https://api.cryptocompare.com',
-    headers: {
-        'User-Agent': 'FlowMCP/1.3.0'
-    },
-    tags: ['crypto', 'price'],
-    routes: {
-        getCurrentPrice: {
-            requestMethod: 'GET',
-            route: '/data/price',
-            parameters: [
-                { position: { location: 'query', key: 'fsym', value: '{{USER_PARAM}}' }, z: 'string()' }
-            ],
-            modifiers: []
-        }
-    }
-}
-
-const validation = FlowMCP.validateSchema({ schema })
-
-if (validation.status) {
-    console.log('Schema is valid!')
-} else {
-    console.error('Schema validation failed:')
-    validation.messages.forEach(msg => console.error(`- ${msg}`))
-}
-```
-
-**Returns**
-
-```js
-{
-    status: true,  // or false if validation fails
-    messages: []   // Array of error messages if validation fails
-}
-```
-
-### .fetch()
-
-Executes HTTP requests based on schema definitions with comprehensive parameter validation, error handling, and response processing. Uses modern fetch API with intelligent error recovery.
-
-**Method**
-
-```js
-async FlowMCP.fetch({ schema, userParams, serverParams, routeName })
-```
-
-| Key            | Type   | Default | Description                                        | Required |
-|----------------|--------|---------|----------------------------------------------------|----------|
-| `schema`       | object |         | Schema definition containing route configuration   | Yes      |
-| `userParams`   | object |         | User-provided parameters for the API call         | Yes      |
-| `serverParams` | object |         | Server-specific parameters (API keys, etc.)       | Yes      |
-| `routeName`    | string |         | Name of the route to execute                       | Yes      |
-
-**Example**
-
-```js
-import { FlowMCP } from './src/index.mjs'
-
-const schema = {
-    namespace: 'cryptocompare',
-    root: 'https://api.cryptocompare.com',
-    headers: {
-        'Authorization': 'Bearer {{apiKey}}'
-    },
-    routes: {
-        getCurrentPrice: {
-            requestMethod: 'GET',
-            route: '/data/price?fsym={{USER_PARAM}}&tsyms={{USER_PARAM}}',
-            parameters: [
-                { position: { location: 'query', key: 'fsym', value: '{{USER_PARAM}}' }, z: 'string()' },
-                { position: { location: 'query', key: 'tsyms', value: '{{USER_PARAM}}' }, z: 'string()' }
-            ],
-            modifiers: []
-        }
-    }
-}
-
-try {
-    const result = await FlowMCP.fetch({
-        schema,
-        userParams: { fsym: 'BTC', tsyms: 'USD,EUR' },
-        serverParams: { apiKey: 'your-api-key' },
-        routeName: 'getCurrentPrice'
-    })
-
-    if (result.status) {
-        console.log('API Response:', result.dataAsString)
-        console.log('Parsed Data:', result.data)
-    } else {
-        console.error('API Error:', result.messages)
-    }
-} catch (error) {
-    console.error('Fetch failed:', error.message)
-}
-```
-
-**Returns**
-
-```js
-{
-    status: true,  // or false if request failed
-    messages: [],  // Array of error messages if status is false
-    data: {        // Parsed response data (null if failed)
-        "BTC": {
-            "USD": 45000,
-            "EUR": 38000
-        }
-    },
-    dataAsString: '{"BTC":{"USD":45000,"EUR":38000}}'  // String representation
-}
-```
-
-### .prepareActivations()
-
-**⚠️ Deprecated Method** - Use `.filterArrayOfSchemas()` instead. Prepares schema activations with environment variables for legacy compatibility.
-
-**Method**
-
-```js
-FlowMCP.prepareActivations({ arrayOfSchemas, envObject, activateTags, includeNamespaces, excludeNamespaces })
-```
-
-| Key                | Type   | Description                                     | Required |
-|--------------------|--------|-------------------------------------------------|----------|
-| `arrayOfSchemas`   | array  | Array of schema objects                         | Yes      |
-| `envObject`        | object | Environment variables and server parameters     | Yes      |
-| `activateTags`     | array  | Tags for filtering (deprecated)                 | Yes      |
-| `includeNamespaces`| array  | Namespaces to include (deprecated)              | Yes      |
-| `excludeNamespaces`| array  | Namespaces to exclude (deprecated)              | Yes      |
-
-**Example**
-
-```js
-// Deprecated - use filterArrayOfSchemas instead
-const { activationPayloads } = FlowMCP.prepareActivations({
-    arrayOfSchemas: schemas,
-    envObject: process.env,
-    activateTags: ['crypto'],
-    includeNamespaces: [],
-    excludeNamespaces: []
-})
-```
-
-**Returns**
-
-```js
-{
-    activationPayloads: [/* prepared activation data */]
-}
-```
-
-## Schema Structure
-
-FlowMCP schemas define the complete structure for API integration with comprehensive validation and tool generation capabilities.
-
-### Basic Schema Structure
-
-| Key          | Type       | Default | Description                                                    | Required |
-|--------------|------------|---------|----------------------------------------------------------------|----------|
-| `namespace`  | string     |         | Unique identifier for the API schema                          | Yes      |
-| `root`       | string     |         | Base URL for the API (e.g., `https://api.example.com`)        | Yes      |
-| `headers`    | object     | `{}`    | Default headers for all requests                               | No       |
-| `tags`       | array      | `[]`    | Tags for categorization and filtering                          | No       |
-| `routes`     | object     |         | Route definitions for API endpoints                            | Yes      |
-
-### Route Structure
-
-| Key            | Type   | Default | Description                                           | Required |
-|----------------|--------|---------|-------------------------------------------------------|----------|
-| `requestMethod`| string |         | HTTP method (`GET`, `POST`, `PUT`, `DELETE`)          | Yes      |
-| `route`        | string |         | API endpoint path with parameter placeholders         | Yes      |
-| `parameters`   | array  |         | Parameter definitions for validation and processing   | Yes      |
-| `modifiers`    | array  | `[]`    | Pre/post processing hooks                             | No       |
-
-### Parameter Structure
-
-| Key        | Type   | Default | Description                                          | Required |
-|------------|--------|---------|------------------------------------------------------|----------|
-| `position` | object |         | Parameter location and mapping configuration         | Yes      |
-| `z`        | string |         | Zod validation schema as string                      | Yes      |
-| `test`     | any    |         | Default test value for test generation              | No       |
-
-### Position Structure
-
-| Key        | Type   | Default | Description                                              | Required |
-|------------|--------|---------|----------------------------------------------------------|----------|
-| `location` | string |         | Parameter location (`query`, `body`, `header`, `insert`)| Yes      |
-| `key`      | string |         | Parameter name in the API                               | Yes      |
-| `value`    | string |         | Value template (`{{USER_PARAM}}`, `{{serverParam}}`)    | Yes      |
-
-### Example Complete Schema
-
-```js
-const schema = {
-    namespace: 'cryptocompare',
-    root: 'https://min-api.cryptocompare.com',
-    headers: {
-        'User-Agent': 'FlowMCP/1.3.0',
-        'Authorization': 'Bearer {{apiKey}}'
-    },
-    tags: ['crypto', 'price', 'market'],
-    routes: {
-        getCurrentPrice: {
-            requestMethod: 'GET',
-            route: '/data/price?fsym={{USER_PARAM}}&tsyms={{USER_PARAM}}',
-            parameters: [
-                {
-                    position: { location: 'query', key: 'fsym', value: '{{USER_PARAM}}' },
-                    z: 'string()',
-                    test: 'BTC'
-                },
-                {
-                    position: { location: 'query', key: 'tsyms', value: '{{USER_PARAM}}' },
-                    z: 'string()',
-                    test: 'USD,EUR'
-                }
-            ],
-            modifiers: []
-        },
-        getHistoricalData: {
-            requestMethod: 'GET',
-            route: '/data/v2/histoday?fsym={{USER_PARAM}}&tsym={{USER_PARAM}}&limit={{USER_PARAM}}',
-            parameters: [
-                {
-                    position: { location: 'query', key: 'fsym', value: '{{USER_PARAM}}' },
-                    z: 'string()',
-                    test: 'BTC'
-                },
-                {
-                    position: { location: 'query', key: 'tsym', value: '{{USER_PARAM}}' },
-                    z: 'string()',
-                    test: 'USD'
-                },
-                {
-                    position: { location: 'query', key: 'limit', value: '{{USER_PARAM}}' },
-                    z: 'number().optional()',
-                    test: 30
-                }
-            ],
-            modifiers: []
-        }
+// Skills, resources, and prompts are top-level exports — never nested in main
+export const skills = {
+    'lookup-balance': {
+        version: 'flowmcp/4.0.0',
+        type: 'namespace-skill',
+        whenToUse: 'When the user wants to lookup an ETH balance.',
+        content: 'Use {{tool:etherscan/getBalance}} with the parameter address.'
     }
 }
 ```
+
+## Legacy API (v1 / v2)
+
+The v1 and v2 APIs remain available for existing consumers:
+
+```js
+import { FlowMCP } from 'flowmcp-core/v2'    // v2 API
+import { FlowMCP } from 'flowmcp-core/v1'    // v1 API (legacy)
+import { FlowMCP } from 'flowmcp-core/legacy' // v1 API (legacy alias)
+```
+
+See [`MIGRATION.md`](./MIGRATION.md) for upgrade paths (v1 → v2 and v3 → v4). The v1 method-by-method reference (`.getArgvParameters`, `.filterArrayOfSchemas`, `.activateServerTools`, `.fetch`, etc.) is preserved in the Git history.
+
 
 ## Error Handling
 
-FlowMCP provides comprehensive error handling across all operations with structured error messages and validation feedback.
-
-### Validation Errors
-
-All methods perform input validation and return structured error information:
+The v4 Pipeline collects all errors and warnings in the result object — it never throws on validation failure. Inspect `status`, `messages`, and `warnings` to react.
 
 ```js
-const result = FlowMCP.validateSchema({ schema: invalidSchema })
-if (!result.status) {
-    console.error('Validation failed:')
-    result.messages.forEach(msg => console.error(`- ${msg}`))
+const result = await Pipeline.load( { filePath: './schemas/etherscan.mjs' } )
+
+if( !result.status ) {
+    result.messages
+        .forEach( ( msg ) => { console.error( '- ' + msg ) } )
+    return
 }
+
+result.warnings
+    .forEach( ( w ) => { console.warn( '! ' + w ) } )
 ```
 
-### HTTP Request Errors
+### Error categories
 
-The fetch method provides detailed error information for failed requests:
-
-```js
-const result = await FlowMCP.fetch({ schema, userParams, serverParams, routeName })
-if (!result.status) {
-    console.error('Request failed:')
-    result.messages.forEach(msg => console.error(`- ${msg}`))
-    // Possible errors: network issues, HTTP status codes, JSON parsing errors
-}
-```
-
-### Schema Filtering Warnings
-
-The filtering system collects and reports all issues found during processing:
-
-```js
-const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas({
-    arrayOfSchemas: schemas,
-    includeNamespaces: ['nonexistent'],
-    excludeNamespaces: [],
-    activateTags: ['unknownNamespace.route']
-})
-
-// Console output:
-// Filtering completed with warnings:
-// - Namespace 'unknownNamespace' not found in schemas
-// - Route 'route' not found in namespace 'validNamespace'
-// Filtered 0 schemas successfully.
-```
-
-### Common Error Categories
-
-1. **Schema Validation Errors**: Missing required fields, invalid structure
-2. **Parameter Validation Errors**: Type mismatches, missing required parameters
-3. **HTTP Errors**: Network failures, API rate limits, authentication issues
-4. **Filter Errors**: Invalid namespace/route references, syntax errors
-5. **Processing Errors**: JSON parsing failures, response format issues
+1. **SEC*** — SecurityScanner findings (forbidden patterns, imports, eval)
+2. **VAL*** — MainValidator (schema shape, meta-block, version)
+3. **SEL*** — SelectionLoader / SelectionValidator
+4. **SKILL*** — SkillLoader / SkillValidator (incl. missing tool references)
+5. **PIPE-WARN / PIPE-INFO** — non-fatal pipeline notices
 
 ## Testing & Validation
 
-FlowMCP includes a comprehensive testing framework with automatic test generation and execution capabilities.
+Run the v4 test suite from the repository root:
 
-### Automatic Test Generation
-
-```js
-// Generate tests from schema
-const tests = FlowMCP.getAllTests({ schema })
-
-// Execute all tests
-const results = []
-for (const test of tests) {
-    const result = await FlowMCP.fetch({
-        schema,
-        userParams: test.userParams,
-        serverParams: { apiKey: 'test-key' },
-        routeName: test.routeName
-    })
-    
-    results.push({
-        route: test.routeName,
-        status: result.status,
-        error: result.status ? null : result.messages
-    })
-}
-
-console.log('Test Results:', results)
+```bash
+npm test
+npm run test:coverage:src
 ```
 
-### Manual Testing
-
-```js
-// Test specific routes with custom parameters
-const testCases = [
-    { route: 'getCurrentPrice', params: { fsym: 'BTC', tsyms: 'USD' } },
-    { route: 'getCurrentPrice', params: { fsym: 'ETH', tsyms: 'EUR' } },
-    { route: 'getHistoricalData', params: { fsym: 'BTC', tsym: 'USD', limit: 10 } }
-]
-
-for (const testCase of testCases) {
-    const result = await FlowMCP.fetch({
-        schema,
-        userParams: testCase.params,
-        serverParams: {},
-        routeName: testCase.route
-    })
-    
-    console.log(`${testCase.route}: ${result.status ? 'PASS' : 'FAIL'}`)
-}
-```
-
-### Validation Testing
-
-```js
-// Test schema validation
-const validationTests = [
-    { schema: validSchema, expected: true },
-    { schema: invalidSchema, expected: false },
-    { schema: incompleteSchema, expected: false }
-]
-
-validationTests.forEach((test, index) => {
-    const result = FlowMCP.validateSchema({ schema: test.schema })
-    const passed = result.status === test.expected
-    console.log(`Validation Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'}`)
-})
-```
+Schema authors should pair each tool with a `tests` array carrying at least one `_description` entry. The v4 pipeline keeps test definitions in `main.tools[name].tests` — they are not removed during validation.
 
 ## Performance & Optimization
 
-### Schema Filtering Performance
-
-The filtering system is optimized for large schema arrays with efficient algorithms:
-
-```js
-// Performance test with 1000 schemas
-const largeSchemaArray = Array(1000).fill(null).map((_, index) => ({
-    namespace: `namespace${index}`,
-    tags: ['tag1', 'tag2'],
-    routes: { route1: {}, route2: {} }
-}))
-
-const startTime = Date.now()
-const { filteredArrayOfSchemas } = FlowMCP.filterArrayOfSchemas({
-    arrayOfSchemas: largeSchemaArray,
-    includeNamespaces: [],
-    excludeNamespaces: [],
-    activateTags: ['tag1']
-})
-const endTime = Date.now()
-
-console.log(`Filtered ${filteredArrayOfSchemas.length} schemas in ${endTime - startTime}ms`)
-```
-
-### HTTP Request Optimization
-
-- Native fetch API for improved performance
-- Intelligent error handling and retry logic
-- Efficient parameter processing and URL construction
-- Automatic response parsing with fallback strategies
-
-### Memory Management
-
-- Minimal memory footprint with efficient data structures
-- Automatic cleanup of temporary processing data
-- Optimized string handling and JSON processing
+- The pipeline is async and runs independent steps concurrently where possible (selections, prefill, library loading).
+- `SecurityScanner` and `SchemaLoader` use static analysis and dynamic import — no eval, no spawned processes.
+- Heuristic helpers (`MetaGenerator.generateForSchema`, `OutputSchemaGenerator.generateFromResponse`) avoid recomputation by caching per-tool / per-response.
+- The Skills-only Sonderpfad short-circuits the pipeline, keeping load times minimal for browser-automation schemas.
 
 ## Documentation
 
 For additional documentation and examples:
 
-- **[FlowMCP Specification v3.0.0](https://github.com/FlowMCP/flowmcp-spec)** - Complete specification with 17 documents ([llms.txt](https://raw.githubusercontent.com/FlowMCP/flowmcp-spec/refs/heads/main/spec/v3.0.0/llms.txt))
-- **[MIGRATION.md](./MIGRATION.md)** - Migration guide from v1 to v2
-- **[FILTERING.md](./FILTERING.md)** - Technical specification for `filterArrayOfSchemas()` (v1 API)
-- **tests/** - Comprehensive test suite with examples for all functionality
+- **[FlowMCP Specification v4.0.0](https://github.com/FlowMCP/flowmcp-spec)** — Complete specification (current)
+- **[MIGRATION.md](./MIGRATION.md)** — Migration guides (v1 → v2 and v3 → v4)
+- **[FILTERING.md](./FILTERING.md)** — Technical specification for `filterArrayOfSchemas()` (legacy v1 API)
+- **tests/unit/v4/** — Reference test suite for the v4 pipeline and modules
 
 ## License
 
