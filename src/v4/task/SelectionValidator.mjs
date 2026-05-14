@@ -3,15 +3,15 @@ const REQUIRED_STRING_FIELDS = [ 'namespace', 'name', 'version', 'description' ]
 
 export class SelectionValidator {
 
-    static validate( { selection } ) {
+    static validate( { selection, catalog } ) {
         const errors = []
 
         REQUIRED_STRING_FIELDS.forEach( ( field ) => {
             const value = selection[ field ]
             if( value === undefined || value === null ) {
-                errors.push( `SEL003: Missing required field '${field}'` )
+                errors.push( `STRUCT: Missing required field '${field}'` )
             } else if( typeof value !== 'string' || value.trim().length === 0 ) {
-                errors.push( `SEL003: Field '${field}' must be a non-empty string` )
+                errors.push( `STRUCT: Field '${field}' must be a non-empty string` )
             }
         } )
 
@@ -33,10 +33,74 @@ export class SelectionValidator {
             )
         }
 
+        SelectionValidator._checkSlashRule( { selection, errors } )
+
+        if( catalog !== undefined && catalog !== null ) {
+            SelectionValidator._checkResolvability( { selection, catalog, errors } )
+        }
+
         return {
             valid: errors.length === 0,
             errors
         }
+    }
+
+
+    static _checkSlashRule( { selection, errors } ) {
+        const slashRequired = [ 'tools', 'resources', 'prompts' ]
+        const slashForbidden = [ 'skills' ]
+
+        slashRequired.forEach( ( field ) => {
+            const refs = selection[ field ]
+            if( !Array.isArray( refs ) ) {
+                return
+            }
+            refs.forEach( ( ref ) => {
+                if( typeof ref !== 'string' || !ref.includes( '/' ) ) {
+                    errors.push( `VAL110: ${field} entry "${ref}" must contain "/" (full ID form)` )
+                }
+            } )
+        } )
+
+        slashForbidden.forEach( ( field ) => {
+            const refs = selection[ field ]
+            if( !Array.isArray( refs ) ) {
+                return
+            }
+            refs.forEach( ( ref ) => {
+                if( typeof ref === 'string' && ref.includes( '/' ) ) {
+                    errors.push( `VAL110: ${field} entry "${ref}" must NOT contain "/" (inline form only)` )
+                }
+            } )
+        } )
+    }
+
+
+    static _checkResolvability( { selection, catalog, errors } ) {
+        const referenceTypes = [
+            { field: 'tools', catalogKey: 'tools' },
+            { field: 'resources', catalogKey: 'resources' },
+            { field: 'prompts', catalogKey: 'prompts' },
+            { field: 'skills', catalogKey: 'skills' }
+        ]
+
+        referenceTypes.forEach( ( { field, catalogKey } ) => {
+            const refs = selection[ field ]
+            if( !Array.isArray( refs ) ) {
+                return
+            }
+
+            const available = catalog[ catalogKey ] !== undefined && catalog[ catalogKey ] !== null
+                ? catalog[ catalogKey ]
+                : []
+            const availableSet = new Set( available )
+
+            refs.forEach( ( ref ) => {
+                if( !availableSet.has( ref ) ) {
+                    errors.push( `SEL003: ${field} reference '${ref}' is not resolvable in the catalog` )
+                }
+            } )
+        } )
     }
 
 }
