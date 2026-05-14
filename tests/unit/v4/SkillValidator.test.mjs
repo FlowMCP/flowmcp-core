@@ -7,7 +7,7 @@ const buildValidSkill = ( overrides = {} ) => {
         name: 'contract-analysis',
         version: 'flowmcp/4.0.0',
         whenToUse: 'Use when user wants to inspect a smart contract',
-        type: 'namespace-skill',
+        type: 'namespace',
         description: 'Analyse a smart contract',
         content: 'Steps: 1. fetch abi 2. inspect',
         output: 'Markdown report'
@@ -52,13 +52,13 @@ describe( 'SkillValidator v4', () => {
     } )
 
 
-    describe( 'SKL103 version', () => {
+    describe( 'SKL004 version', () => {
         it( 'fails when version is missing', () => {
             const skill = buildValidSkill( { version: undefined } )
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL103' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL004' ) ) ).toBe( true )
         } )
 
         it( 'fails when version is null', () => {
@@ -66,7 +66,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL103' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL004' ) ) ).toBe( true )
         } )
 
         it( 'fails when version is the old v2 string flowmcp-skill/1.0.0', () => {
@@ -74,7 +74,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL103' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL004' ) ) ).toBe( true )
         } )
 
         it( 'fails when version is an arbitrary string', () => {
@@ -82,7 +82,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL103' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL004' ) ) ).toBe( true )
         } )
 
         it( 'passes when version equals flowmcp/4.0.0', () => {
@@ -94,13 +94,13 @@ describe( 'SkillValidator v4', () => {
     } )
 
 
-    describe( 'SKL101 whenToUse', () => {
+    describe( 'SKL019 whenToUse', () => {
         it( 'fails when whenToUse is missing', () => {
             const skill = buildValidSkill( { whenToUse: undefined } )
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL101' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL019' ) ) ).toBe( true )
         } )
 
         it( 'fails when whenToUse is null', () => {
@@ -108,7 +108,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL101' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL019' ) ) ).toBe( true )
         } )
 
         it( 'fails when whenToUse is not a string', () => {
@@ -116,7 +116,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL101' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL019' ) ) ).toBe( true )
         } )
 
         it( 'fails when whenToUse is empty string', () => {
@@ -124,7 +124,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL101' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL019' ) ) ).toBe( true )
         } )
 
         it( 'fails when whenToUse is whitespace only', () => {
@@ -132,18 +132,18 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL101' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL019' ) ) ).toBe( true )
         } )
     } )
 
 
-    describe( 'SKL102 type', () => {
+    describe( 'SKL013 type', () => {
         it( 'fails when type is missing', () => {
             const skill = buildValidSkill( { type: undefined } )
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL102' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL013' ) ) ).toBe( true )
         } )
 
         it( 'fails when type is null', () => {
@@ -151,7 +151,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL102' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL013' ) ) ).toBe( true )
         } )
 
         it( 'fails when type is not a string', () => {
@@ -159,7 +159,7 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL102' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL013' ) ) ).toBe( true )
         } )
 
         it( 'fails when type is not in the allowed enum', () => {
@@ -167,25 +167,25 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = runValidate( { skill } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL102' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL013' ) ) ).toBe( true )
         } )
 
-        it( 'passes for type namespace-skill', () => {
-            const skill = buildValidSkill( { type: 'namespace-skill' } )
+        it( 'passes for type namespace', () => {
+            const skill = buildValidSkill( { type: 'namespace' } )
             const { status } = runValidate( { skill } )
 
             expect( status ).toBe( true )
         } )
 
-        it( 'passes for type selection-skill', () => {
-            const skill = buildValidSkill( { type: 'selection-skill' } )
+        it( 'passes for type selection', () => {
+            const skill = buildValidSkill( { type: 'selection' } )
             const { status } = runValidate( { skill } )
 
             expect( status ).toBe( true )
         } )
 
-        it( 'passes for type agent-skill', () => {
-            const skill = buildValidSkill( { type: 'agent-skill' } )
+        it( 'passes for type agent', () => {
+            const skill = buildValidSkill( { type: 'agent' } )
             const { status } = runValidate( { skill } )
 
             expect( status ).toBe( true )
@@ -454,8 +454,8 @@ describe( 'SkillValidator v4', () => {
             const { status, messages } = SkillValidator.validate( { skills, tools: [], resources: [] } )
 
             expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL103' ) && m.includes( 'skill "bad"' ) ) ).toBe( true )
-            expect( messages.some( ( m ) => m.startsWith( 'SKL101' ) && m.includes( 'skill "bad"' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL004' ) && m.includes( 'skill "bad"' ) ) ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'SKL019' ) && m.includes( 'skill "bad"' ) ) ).toBe( true )
         } )
     } )
 } )

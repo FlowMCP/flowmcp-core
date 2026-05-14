@@ -300,7 +300,7 @@ export const main = {
 export const skills = {
     'lookup-balance': {
         version: 'flowmcp/4.0.0',
-        type: 'namespace-skill',
+        type: 'namespace',
         whenToUse: 'When the user wants to lookup an ETH balance.',
         content: 'Use {{tool:etherscan/getBalance}}.'
     }

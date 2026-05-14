@@ -22,7 +22,7 @@ class SkillValidator {
 
     static #validateRequiredFields( { skill, prefix, messages } ) {
         const namePattern = /^[a-z][a-z0-9-]{0,63}$/
-        const allowedTypes = [ 'namespace-skill', 'selection-skill', 'agent-skill' ]
+        const allowedTypes = [ 'namespace', 'selection', 'agent' ]
 
         if( skill[ 'name' ] === undefined || skill[ 'name' ] === null ) {
             messages.push( `${prefix}.name: Missing required field` )
@@ -33,25 +33,25 @@ class SkillValidator {
         }
 
         if( skill[ 'version' ] === undefined || skill[ 'version' ] === null ) {
-            messages.push( `SKL103 ${prefix}.version: Missing required field` )
+            messages.push( `SKL004 ${prefix}.version: Missing required field` )
         } else if( skill[ 'version' ] !== 'flowmcp/4.0.0' ) {
-            messages.push( `SKL103 ${prefix}.version: Must be "flowmcp/4.0.0", got "${skill[ 'version' ]}"` )
+            messages.push( `SKL004 ${prefix}.version: Must be "flowmcp/4.0.0", got "${skill[ 'version' ]}"` )
         }
 
         if( skill[ 'whenToUse' ] === undefined || skill[ 'whenToUse' ] === null ) {
-            messages.push( `SKL101 ${prefix}.whenToUse: Missing required field` )
+            messages.push( `SKL019 ${prefix}.whenToUse: Missing required field` )
         } else if( typeof skill[ 'whenToUse' ] !== 'string' ) {
-            messages.push( `SKL101 ${prefix}.whenToUse: Must be type "string"` )
+            messages.push( `SKL019 ${prefix}.whenToUse: Must be type "string"` )
         } else if( skill[ 'whenToUse' ].trim().length === 0 ) {
-            messages.push( `SKL101 ${prefix}.whenToUse: Must not be empty` )
+            messages.push( `SKL019 ${prefix}.whenToUse: Must not be empty` )
         }
 
         if( skill[ 'type' ] === undefined || skill[ 'type' ] === null ) {
-            messages.push( `SKL102 ${prefix}.type: Missing required field` )
+            messages.push( `SKL013 ${prefix}.type: Missing required field` )
         } else if( typeof skill[ 'type' ] !== 'string' ) {
-            messages.push( `SKL102 ${prefix}.type: Must be type "string"` )
+            messages.push( `SKL013 ${prefix}.type: Must be type "string"` )
         } else if( !allowedTypes.includes( skill[ 'type' ] ) ) {
-            messages.push( `SKL102 ${prefix}.type: Must be one of ${allowedTypes.join( ', ' )}, got "${skill[ 'type' ]}"` )
+            messages.push( `SKL013 ${prefix}.type: Must be one of ${allowedTypes.join( ', ' )}, got "${skill[ 'type' ]}"` )
         }
 
         if( skill[ 'description' ] === undefined || skill[ 'description' ] === null ) {
