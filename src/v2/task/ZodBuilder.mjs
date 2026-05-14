@@ -81,12 +81,12 @@ class ZodBuilder {
 
     static #insertOption( { _interface, option } ) {
         const optionTypes = [
-            [ 'min(',      'min',      'float'   ],
-            [ 'max(',      'max',      'float'   ],
-            [ 'length(',   'length',   'int'     ],
-            [ 'regex(',    'regex',    'string'  ],
-            [ 'optional(', 'optional', 'empty'   ],
-            [ 'default(',  'default',  'string'  ]
+            [ 'min(',      'min',      'float'                                                                                          ],
+            [ 'max(',      'max',      'float'                                                                                          ],
+            [ 'length(',   'length',   'int'                                                                                            ],
+            [ 'regex(',    'regex',    'string'                                                                                         ],
+            [ 'optional(', 'optional', 'empty'                                                                                          ],
+            [ 'default(',  'default',  ( v ) => typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : 'string'        ]
         ]
 
         const item = optionTypes
@@ -96,7 +96,22 @@ class ZodBuilder {
             return _interface
         }
 
-        const [ , zType, primitives ] = item
+        const [ , zType, primitivesEntry ] = item
+
+        let primitives = primitivesEntry
+        if( typeof primitivesEntry === 'function' ) {
+            const rawValue = option.slice( zType.length + 1, -1 )
+            const parsedNumber = Number( rawValue )
+            const isNumeric = rawValue.trim().length > 0 && !Number.isNaN( parsedNumber )
+            const isBoolean = rawValue === 'true' || rawValue === 'false'
+            const detected = isNumeric
+                ? parsedNumber
+                : isBoolean
+                    ? ( rawValue === 'true' )
+                    : rawValue
+            primitives = primitivesEntry( detected )
+        }
+
         let value = null
 
         switch( primitives ) {
@@ -106,6 +121,9 @@ class ZodBuilder {
             case 'integer':
             case 'int':
                 value = parseInt( option.slice( zType.length + 1, -1 ) )
+                break
+            case 'number':
+                value = Number( option.slice( zType.length + 1, -1 ) )
                 break
             case 'string':
                 value = option.slice( zType.length + 1, -1 )
