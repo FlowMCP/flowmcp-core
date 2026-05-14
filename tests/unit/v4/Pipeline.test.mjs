@@ -100,60 +100,6 @@ describe( 'v4 Pipeline', () => {
     } )
 
 
-    describe( 'Skills-only Sonderpfad (REV-12 ERRATA-2)', () => {
-        it( 'detects empty tools object and returns status:true via Sonderpfad', async () => {
-            const filePath = join( schemasDir, 'v4-skills-only.mjs' )
-
-            const result = await Pipeline
-                .load( { filePath, listsDir: null, allowlist: null } )
-
-            expect( result[ 'status' ] ).toBe( true )
-            expect( result[ 'main' ][ 'namespace' ] ).toBe( 'skillsonly' )
-        } )
-
-
-        it( 'returns empty handlerMap when Skills-only path triggers', async () => {
-            const filePath = join( schemasDir, 'v4-skills-only.mjs' )
-
-            const result = await Pipeline
-                .load( { filePath, listsDir: null, allowlist: null } )
-
-            expect( result[ 'handlerMap' ] ).toEqual( {} )
-            expect( result[ 'resourceHandlerMap' ] ).toEqual( {} )
-        } )
-
-
-        it( 'skips selection/prefill/placeholder/prompt steps in Sonderpfad', async () => {
-            const filePath = join( schemasDir, 'v4-skills-only.mjs' )
-
-            const result = await Pipeline
-                .load( {
-                    filePath,
-                    listsDir: null,
-                    allowlist: null,
-                    selectionFiles: [ join( selectionsDir, 'valid-selection.mjs' ) ],
-                    prefillTimeout: 1000,
-                    fetchFn: async () => 'never-called'
-                } )
-
-            // Sonderpfad ignores selectionFiles, prefill, and prompts entirely.
-            expect( result[ 'status' ] ).toBe( true )
-            expect( result[ 'selections' ] ).toEqual( {} )
-            expect( result[ 'prompts' ] ).toEqual( {} )
-        } )
-
-
-        it( 'returns empty skills when no main.skills defined in Sonderpfad', async () => {
-            const filePath = join( schemasDir, 'v4-skills-only.mjs' )
-
-            const result = await Pipeline
-                .load( { filePath, listsDir: null, allowlist: null } )
-
-            expect( result[ 'skills' ] ).toEqual( {} )
-        } )
-    } )
-
-
     describe( 'Failure propagation', () => {
         it( 'returns status:false when MainValidator fails (wrong version)', async () => {
             const filePath = join( schemasDir, 'v4-invalid-version.mjs' )
@@ -164,7 +110,7 @@ describe( 'v4 Pipeline', () => {
             expect( result[ 'status' ] ).toBe( false )
 
             const hasVersionError = result[ 'messages' ]
-                .some( ( msg ) => msg.includes( 'VAL108' ) || msg.includes( 'version' ) )
+                .some( ( msg ) => msg.includes( 'VAL014' ) || msg.includes( 'version' ) )
 
             expect( hasVersionError ).toBe( true )
         } )

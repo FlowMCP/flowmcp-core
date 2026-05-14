@@ -96,19 +96,7 @@ class Pipeline {
         // Schritt 6: LibraryLoader
         const libraries = await Pipeline.#loadLibraries( { main, allowlist, warnings } )
 
-        // Sonderpfad-Erkennung (REV-12 Kap. 4.3 ERRATA-2)
         const toolsObj = main[ 'tools' ] || {}
-        const isSkillsOnly = Object.keys( toolsObj ).length === 0
-
-        if( isSkillsOnly ) {
-            return await Pipeline.#runSkillsOnlyPath( {
-                main,
-                filePath,
-                sharedLists,
-                libraries,
-                warnings
-            } )
-        }
 
         // Schritt 7: SelectionLoader (optional — only if selectionFiles provided)
         const { selections, selectionMessages } = await Pipeline.#loadSelections( {
@@ -268,54 +256,6 @@ class Pipeline {
             prompts,
             contentMap,
             prefillResults,
-            warnings
-        } )
-    }
-
-
-    static async #runSkillsOnlyPath( { main, filePath, sharedLists, libraries, warnings } ) {
-        // Skills-only Sonderpfad — Schritte 7-9 + 11-15 werden uebersprungen.
-        // Nur SkillLoader (Schritt 10) wird ausgefuehrt, falls main.skills existiert
-        // (Legacy-Pfad fuer v3 Skill-only Schemas). In v4 wird main.skills verboten,
-        // aber die Sonderpfad-Logik bleibt fuer Konsumenten, die schon dort sind.
-        const skillDefinitions = main[ 'skills' ]
-
-        let skills = {}
-
-        if( skillDefinitions !== undefined && skillDefinitions !== null ) {
-            const schemaDir = dirname( filePath )
-            const {
-                status: loadStatus,
-                skills: loadedSkills,
-                messages: loadMessages
-            } = await SkillLoader
-                .load( { skillDefinitions, schemaDir } )
-
-            if( !loadStatus ) {
-                return Pipeline.#buildResult( {
-                    status: false,
-                    messages: loadMessages,
-                    main,
-                    sharedLists,
-                    libraries,
-                    warnings
-                } )
-            }
-
-            skills = loadedSkills
-        }
-
-        return Pipeline.#buildResult( {
-            status: true,
-            messages: [],
-            main,
-            handlerMap: {},
-            resourceHandlerMap: {},
-            sharedLists,
-            libraries,
-            skills,
-            selections: {},
-            prompts: {},
             warnings
         } )
     }
