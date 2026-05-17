@@ -3,7 +3,7 @@ import { ResourceMarkdownLoader } from './ResourceMarkdownLoader.mjs'
 
 
 class ResourceExecutor {
-    static #FREEQUERY_DEFINITION = {
+    static #RUN_SQL_DEFINITION = {
         sql: '{{DYNAMIC_SQL}}',
         description: 'Execute a custom SQL query against the database',
         parameters: [
@@ -19,6 +19,27 @@ class ResourceExecutor {
         output: {
             mimeType: 'application/json',
             schema: { type: 'array', items: { type: 'object' } }
+        }
+    }
+
+
+    static #DESCRIBE_TABLES_DEFINITION = {
+        sql: "SELECT m.name as table_name, p.name as column, p.type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table'",
+        description: 'Returns database schema as structured rows (table_name, column, type) for AI-friendly discovery',
+        parameters: [],
+        output: {
+            mimeType: 'application/json',
+            schema: {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    properties: {
+                        table_name: { type: 'string', description: 'Table name' },
+                        column: { type: 'string', description: 'Column name' },
+                        type: { type: 'string', description: 'SQLite column type' }
+                    }
+                }
+            }
         }
     }
 
@@ -133,10 +154,14 @@ class ResourceExecutor {
         const mode = resourceDefinition['mode'] || 'in-memory'
         const { queries } = resourceDefinition
 
-        const isFreeQuery = queryName === 'freeQuery' && !queries['freeQuery']
-        const queryDef = isFreeQuery
-            ? ResourceExecutor.#FREEQUERY_DEFINITION
-            : queries[ queryName ]
+        const isRunSql = queryName === 'runSql' && !queries['runSql']
+        const isDescribeTables = queryName === 'describeTables' && !queries['describeTables']
+
+        const queryDef = isRunSql
+            ? ResourceExecutor.#RUN_SQL_DEFINITION
+            : isDescribeTables
+                ? ResourceExecutor.#DESCRIBE_TABLES_DEFINITION
+                : queries[ queryName ]
 
         if( !queryDef ) {
             struct['status'] = false
@@ -250,8 +275,8 @@ class ResourceExecutor {
     }
 
 
-    static injectFreeQuery( { queries, mode } ) {
-        if( queries['freeQuery'] ) {
+    static injectRunSql( { queries, mode } ) {
+        if( queries['runSql'] ) {
             return { queries }
         }
 
@@ -261,10 +286,24 @@ class ResourceExecutor {
 
         const injected = {
             ...queries,
-            freeQuery: {
-                ...ResourceExecutor.#FREEQUERY_DEFINITION,
+            runSql: {
+                ...ResourceExecutor.#RUN_SQL_DEFINITION,
                 description
             }
+        }
+
+        return { queries: injected }
+    }
+
+
+    static injectDescribeTables( { queries } ) {
+        if( queries['describeTables'] ) {
+            return { queries }
+        }
+
+        const injected = {
+            ...queries,
+            describeTables: { ...ResourceExecutor.#DESCRIBE_TABLES_DEFINITION }
         }
 
         return { queries: injected }

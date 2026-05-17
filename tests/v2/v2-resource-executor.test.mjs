@@ -323,11 +323,11 @@ describe( 'ResourceExecutor', () => {
         } )
 
 
-        test( 'auto-injects freeQuery for in-memory mode', async () => {
+        test( 'auto-injects runSql for in-memory mode', async () => {
             const { struct } = await ResourceExecutor
                 .execute( {
                     resourceDefinition: validResourceDefinition,
-                    queryName: 'freeQuery',
+                    queryName: 'runSql',
                     userParams: { sql: 'SELECT * FROM tokens WHERE symbol = \'ETH\'' },
                     handlerMap: {}
                 } )
@@ -338,11 +338,11 @@ describe( 'ResourceExecutor', () => {
         } )
 
 
-        test( 'freeQuery rejects non-SELECT in in-memory mode', async () => {
+        test( 'runSql rejects non-SELECT in in-memory mode', async () => {
             const { struct } = await ResourceExecutor
                 .execute( {
                     resourceDefinition: validResourceDefinition,
-                    queryName: 'freeQuery',
+                    queryName: 'runSql',
                     userParams: { sql: 'INSERT INTO tokens VALUES (\'TEST\', \'Test\', \'0x0\', 1, 18)' },
                     handlerMap: {}
                 } )
@@ -358,33 +358,57 @@ describe( 'ResourceExecutor', () => {
 
             expect( hasBlockedError ).toBe( true )
         } )
+
+
+        test( 'auto-injects describeTables and returns structured rows', async () => {
+            const { struct } = await ResourceExecutor
+                .execute( {
+                    resourceDefinition: validResourceDefinition,
+                    queryName: 'describeTables',
+                    userParams: {},
+                    handlerMap: {}
+                } )
+
+            expect( struct['status'] ).toBe( true )
+            expect( Array.isArray( struct['data'] ) ).toBe( true )
+
+            const tokenSymbolRow = struct['data']
+                .find( ( row ) => {
+                    const match = row['table_name'] === 'tokens' && row['column'] === 'symbol'
+
+                    return match
+                } )
+
+            expect( tokenSymbolRow ).toBeDefined()
+            expect( tokenSymbolRow['type'] ).toBe( 'TEXT' )
+        } )
     } )
 
 
-    describe( 'injectFreeQuery()', () => {
-        test( 'adds freeQuery when not present', () => {
+    describe( 'injectRunSql()', () => {
+        test( 'adds runSql when not present', () => {
             const queries = {
                 getSchema: { sql: 'SELECT * FROM sqlite_master', description: 'Get schema' }
             }
 
             const { queries: result } = ResourceExecutor
-                .injectFreeQuery( { queries, mode: 'in-memory' } )
+                .injectRunSql( { queries, mode: 'in-memory' } )
 
-            expect( result['freeQuery'] ).toBeDefined()
-            expect( result['freeQuery']['description'] ).toContain( 'read-only' )
+            expect( result['runSql'] ).toBeDefined()
+            expect( result['runSql']['description'] ).toContain( 'read-only' )
             expect( result['getSchema'] ).toBeDefined()
         } )
 
 
-        test( 'does not overwrite existing freeQuery', () => {
+        test( 'does not overwrite existing runSql', () => {
             const queries = {
-                freeQuery: { sql: 'custom', description: 'Custom freeQuery' }
+                runSql: { sql: 'custom', description: 'Custom runSql' }
             }
 
             const { queries: result } = ResourceExecutor
-                .injectFreeQuery( { queries, mode: 'in-memory' } )
+                .injectRunSql( { queries, mode: 'in-memory' } )
 
-            expect( result['freeQuery']['description'] ).toBe( 'Custom freeQuery' )
+            expect( result['runSql']['description'] ).toBe( 'Custom runSql' )
         } )
 
 
@@ -394,9 +418,70 @@ describe( 'ResourceExecutor', () => {
             }
 
             const { queries: result } = ResourceExecutor
-                .injectFreeQuery( { queries, mode: 'file-based' } )
+                .injectRunSql( { queries, mode: 'file-based' } )
 
-            expect( result['freeQuery']['description'] ).toContain( 'any SQL' )
+            expect( result['runSql']['description'] ).toContain( 'any SQL' )
+        } )
+    } )
+
+
+    describe( 'injectDescribeTables()', () => {
+        test( 'adds describeTables when not present', () => {
+            const queries = {
+                bySymbol: { sql: 'SELECT * FROM tokens WHERE symbol = ?', description: 'Find by symbol' }
+            }
+
+            const { queries: result } = ResourceExecutor
+                .injectDescribeTables( { queries } )
+
+            expect( result['describeTables'] ).toBeDefined()
+            expect( result['describeTables']['sql'] ).toContain( 'sqlite_master' )
+            expect( result['describeTables']['sql'] ).toContain( 'pragma_table_info' )
+            expect( result['bySymbol'] ).toBeDefined()
+        } )
+
+
+        test( 'does not overwrite existing describeTables', () => {
+            const queries = {
+                describeTables: { sql: 'CUSTOM', description: 'Custom describe' }
+            }
+
+            const { queries: result } = ResourceExecutor
+                .injectDescribeTables( { queries } )
+
+            expect( result['describeTables']['sql'] ).toBe( 'CUSTOM' )
+            expect( result['describeTables']['description'] ).toBe( 'Custom describe' )
+        } )
+
+
+        test( 'describeTables SQL returns table_name, column, type from real DB', async () => {
+            const { struct } = await ResourceExecutor
+                .execute( {
+                    resourceDefinition: validResourceDefinition,
+                    queryName: 'describeTables',
+                    userParams: {},
+                    handlerMap: {}
+                } )
+
+            expect( struct['status'] ).toBe( true )
+
+            const rows = struct['data']
+            const hasTableNameKey = rows.every( ( row ) => {
+                const match = 'table_name' in row && 'column' in row && 'type' in row
+
+                return match
+            } )
+
+            expect( hasTableNameKey ).toBe( true )
+
+            const tokensRow = rows.find( ( row ) => {
+                const match = row['table_name'] === 'tokens' && row['column'] === 'address'
+
+                return match
+            } )
+
+            expect( tokensRow ).toBeDefined()
+            expect( tokensRow['type'] ).toBe( 'TEXT' )
         } )
     } )
 
