@@ -68,7 +68,7 @@ describe( 'LibraryLoader', () => {
             const { allowlist } = LibraryLoader.getDefaultAllowlist()
 
             expect( Array.isArray( allowlist ) ).toBe( true )
-            expect( allowlist.length ).toBe( 21 )
+            expect( allowlist.length ).toBe( 22 )
 
             // Node.js Built-ins
             expect( allowlist ).toContain( 'zlib' )
@@ -89,6 +89,7 @@ describe( 'LibraryLoader', () => {
             expect( allowlist ).toContain( 'yahoo-finance2' )
             expect( allowlist ).toContain( 'trading-signals' )
             expect( allowlist ).toContain( 'talib' )
+            expect( allowlist ).toContain( 'technicalindicators' )
             expect( allowlist ).toContain( 'moment' )
 
             // Visualization
@@ -124,7 +125,7 @@ describe( 'LibraryLoader', () => {
             const { allowlist } = LibraryLoader.mergeAllowlist( {} )
 
             expect( Array.isArray( allowlist ) ).toBe( true )
-            expect( allowlist.length ).toBe( 21 )
+            expect( allowlist.length ).toBe( 22 )
             expect( allowlist ).toContain( 'trading-signals' )
         } )
 
@@ -132,21 +133,21 @@ describe( 'LibraryLoader', () => {
         test( 'returns default allowlist when extraAllowlist is null', () => {
             const { allowlist } = LibraryLoader.mergeAllowlist( { extraAllowlist: null } )
 
-            expect( allowlist.length ).toBe( 21 )
+            expect( allowlist.length ).toBe( 22 )
         } )
 
 
         test( 'returns default allowlist when extraAllowlist is undefined', () => {
             const { allowlist } = LibraryLoader.mergeAllowlist( { extraAllowlist: undefined } )
 
-            expect( allowlist.length ).toBe( 21 )
+            expect( allowlist.length ).toBe( 22 )
         } )
 
 
         test( 'returns default allowlist when extraAllowlist is empty array', () => {
             const { allowlist } = LibraryLoader.mergeAllowlist( { extraAllowlist: [] } )
 
-            expect( allowlist.length ).toBe( 21 )
+            expect( allowlist.length ).toBe( 22 )
         } )
 
 
@@ -155,7 +156,7 @@ describe( 'LibraryLoader', () => {
                 extraAllowlist: [ 'my-custom', 'another-lib' ]
             } )
 
-            expect( allowlist.length ).toBe( 23 )
+            expect( allowlist.length ).toBe( 24 )
             expect( allowlist ).toContain( 'my-custom' )
             expect( allowlist ).toContain( 'another-lib' )
             expect( allowlist ).toContain( 'trading-signals' )
@@ -167,7 +168,7 @@ describe( 'LibraryLoader', () => {
                 extraAllowlist: [ 'moment', 'unique-extra' ]
             } )
 
-            expect( allowlist.length ).toBe( 22 )
+            expect( allowlist.length ).toBe( 23 )
             expect( allowlist.filter( ( lib ) => lib === 'moment' ).length ).toBe( 1 )
             expect( allowlist ).toContain( 'unique-extra' )
         } )
@@ -178,7 +179,7 @@ describe( 'LibraryLoader', () => {
                 extraAllowlist: [ 'dup', 'dup', 'other' ]
             } )
 
-            expect( allowlist.length ).toBe( 23 )
+            expect( allowlist.length ).toBe( 24 )
             expect( allowlist.filter( ( lib ) => lib === 'dup' ).length ).toBe( 1 )
         } )
 

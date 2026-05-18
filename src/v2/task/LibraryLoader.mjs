@@ -17,6 +17,7 @@ class LibraryLoader {
         'yahoo-finance2',
         'trading-signals',
         'talib',
+        'technicalindicators',
         'moment',
         // Visualization
         'vega-lite',
