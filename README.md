@@ -278,6 +278,14 @@ For additional documentation and examples:
 - **[FILTERING.md](./FILTERING.md)** — Technical specification for `filterArrayOfSchemas()` (legacy v1 API)
 - **tests/unit/v4/** — Reference test suite for the v4 pipeline and modules
 
+## License & Terms of Services
+
+FlowMCP Core is **MIT-licensed**. The MIT license covers the schema validation, agent manifest loading, and tool execution code in this repository.
+
+**Schemas loaded via FlowMCP** access third-party APIs, each with their own Terms of Services. Schemas may include an optional `meta.termsOfService` field with the provider's ToS URL and the date we last verified the link. **We do not classify or interpret these Terms of Services.** Users are solely responsible for reviewing each API provider's terms before use.
+
+FlowMCP makes no representation about ToS compliance, data licensing, or fitness for any purpose. See [DISCLAIMER.md](./DISCLAIMER.md) for details.
+
 ## License
 
 MIT
