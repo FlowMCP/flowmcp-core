@@ -1,5 +1,11 @@
 import { describe, test, expect } from '@jest/globals'
 import { LibraryLoader } from '../../src/v2/task/LibraryLoader.mjs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath( import.meta.url )
+const __dirname = dirname( __filename )
+const fallbackBase = join( __dirname, 'fixtures', 'loader-fallback' )
 
 
 describe( 'LibraryLoader', () => {
@@ -59,6 +65,33 @@ describe( 'LibraryLoader', () => {
                 expect( err.message ).toContain( 'bad1' )
                 expect( err.message ).toContain( 'bad2' )
             }
+        } )
+
+
+        test( 'falls back to createRequire when ESM import fails (native/CJS path)', async () => {
+            // 'fallbackcjs' is a CJS-only fixture under fallbackBase/node_modules. A bare
+            // `import('fallbackcjs')` cannot resolve from core/src, so the loader must use
+            // createRequire( resolveBase ) — the same mechanism that loads native .node
+            // bindings like talib through the Core pipeline path (Memo 063, F4).
+            const { libraries } = await LibraryLoader.load( {
+                requiredLibraries: [ 'fallbackcjs' ],
+                allowlist: [ 'fallbackcjs' ],
+                resolveBase: fallbackBase
+            } )
+
+            expect( libraries[ 'fallbackcjs' ] ).toBeDefined()
+            expect( libraries[ 'fallbackcjs' ].marker )
+                .toBe( 'loaded-via-createRequire-fallback' )
+        } )
+
+
+        test( 'allowlist check stays in front of the createRequire fallback (fail-closed)', async () => {
+            await expect(
+                LibraryLoader.load( {
+                    requiredLibraries: [ 'fallbackcjs' ],
+                    resolveBase: fallbackBase
+                } )
+            ).rejects.toThrow( 'SEC013' )
         } )
     } )
 

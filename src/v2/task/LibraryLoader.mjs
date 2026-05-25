@@ -9,6 +9,10 @@
  * For more information, see LICENSE.md and DISCLAIMER.md in the repo root.
  */
 
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
+
+
 class LibraryLoader {
     static #defaultAllowlist = [
         // Node.js Built-ins
@@ -42,7 +46,7 @@ class LibraryLoader {
     ]
 
 
-    static async load( { requiredLibraries, allowlist } ) {
+    static async load( { requiredLibraries, allowlist, resolveBase } ) {
         if( !requiredLibraries || requiredLibraries.length === 0 ) {
             return { libraries: {} }
         }
@@ -61,12 +65,28 @@ class LibraryLoader {
             throw new Error( messages.join( '; ' ) )
         }
 
+        // resolveBase: directory whose node_modules holds native/CJS libs (e.g. talib).
+        // Default is the host process cwd — the project that runs FlowMCP. Callers may pass
+        // an explicit base. createRequire wants a referencing filename, so we anchor on an
+        // index.js inside the base (the file need not exist; only its directory is used).
+        const effectiveBase = resolveBase || process.cwd()
+        const requireFromBase = createRequire( join( effectiveBase, 'index.js' ) )
         const libraries = {}
 
         const loadPromises = requiredLibraries
             .map( async ( lib ) => {
-                const module = await import( lib )
-                libraries[ lib ] = module.default || module
+                try {
+                    const module = await import( lib )
+                    libraries[ lib ] = module.default || module
+                } catch( importError ) {
+                    // Fallback for native (.node) bindings and libs not resolvable as ESM
+                    // from core (e.g. talib): resolve + require from the host base. CJS
+                    // require handles native addons that ESM import rejects with
+                    // ERR_UNKNOWN_FILE_EXTENSION '.node'. Allowlist check above stays
+                    // in front (fail-closed) — this only changes HOW an allowed lib loads.
+                    const module = requireFromBase( lib )
+                    libraries[ lib ] = module.default || module
+                }
             } )
 
         await Promise.all( loadPromises )

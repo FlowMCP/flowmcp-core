@@ -1,4 +1,8 @@
 node_modules
+# Committed test fixture: a CJS-only package that intentionally lives under a
+# node_modules dir so LibraryLoader's createRequire fallback can resolve it.
+!tests/v2/fixtures/loader-fallback/node_modules/
+!tests/v2/fixtures/loader-fallback/node_modules/**
 old
 /schemas
 ai
