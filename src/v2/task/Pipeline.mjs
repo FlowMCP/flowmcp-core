@@ -30,7 +30,7 @@ import { dirname } from 'node:path'
 
 
 class Pipeline {
-    static async load( { filePath, listsDir, allowlist } ) {
+    static async load( { filePath, listsDir, allowlist, resolveBase } ) {
         const warnings = []
 
         const { status: scanStatus, messages: scanMessages } = await SecurityScanner
@@ -111,7 +111,7 @@ class Pipeline {
                 warnings.push( 'PIPE-WARN: Schema declares requiredLibraries but no allowlist was provided — using default allowlist' )
             }
             const loaded = await LibraryLoader
-                .load( { requiredLibraries: effectiveRequiredLibraries, allowlist } )
+                .load( { requiredLibraries: effectiveRequiredLibraries, allowlist, resolveBase } )
             libraries = loaded['libraries']
         }
 

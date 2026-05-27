@@ -26,9 +26,9 @@ import { ZodBuilder } from './task/ZodBuilder.mjs'
 
 
 class FlowMCP {
-    static async loadSchema( { filePath, listsDir, allowlist } ) {
+    static async loadSchema( { filePath, listsDir, allowlist, resolveBase } ) {
         const result = await Pipeline
-            .load( { filePath, listsDir, allowlist } )
+            .load( { filePath, listsDir, allowlist, resolveBase } )
 
         return result
     }
@@ -74,9 +74,9 @@ class FlowMCP {
     }
 
 
-    static async loadLibraries( { requiredLibraries, allowlist } ) {
+    static async loadLibraries( { requiredLibraries, allowlist, resolveBase } ) {
         const { libraries } = await LibraryLoader
-            .load( { requiredLibraries, allowlist } )
+            .load( { requiredLibraries, allowlist, resolveBase } )
 
         return { libraries }
     }

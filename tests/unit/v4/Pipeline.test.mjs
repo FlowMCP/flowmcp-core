@@ -8,6 +8,7 @@ const __filename = fileURLToPath( import.meta.url )
 const __dirname = dirname( __filename )
 const schemasDir = join( __dirname, 'fixtures', 'pipeline', 'schemas' )
 const selectionsDir = join( __dirname, 'fixtures', 'pipeline', 'selections' )
+const fallbackBase = join( __dirname, '..', '..', 'v2', 'fixtures', 'loader-fallback' )
 
 
 describe( 'v4 Pipeline', () => {
@@ -254,6 +255,30 @@ describe( 'v4 Pipeline', () => {
                 .forEach( ( key ) => {
                     expect( Object.prototype.hasOwnProperty.call( result, key ) ).toBe( true )
                 } )
+        } )
+    } )
+
+
+    describe( 'Library loading via resolveBase (Step 6 — Befund C / flowmcp-cli#44)', () => {
+        it( 'threads resolveBase down to LibraryLoader so a required library resolves deterministically', async () => {
+            const filePath = join( schemasDir, 'v4-required-library.mjs' )
+
+            const result = await Pipeline
+                .load( { filePath, listsDir: null, allowlist: [ 'fallbackcjs' ], resolveBase: fallbackBase } )
+
+            expect( result[ 'status' ] ).toBe( true )
+            expect( result[ 'libraries' ][ 'fallbackcjs' ] ).toBeDefined()
+            expect( result[ 'libraries' ][ 'fallbackcjs' ][ 'marker' ] )
+                .toBe( 'loaded-via-createRequire-fallback' )
+        } )
+
+
+        it( 'fails to resolve the required library when no resolveBase points at its node_modules', async () => {
+            const filePath = join( schemasDir, 'v4-required-library.mjs' )
+
+            await expect(
+                Pipeline.load( { filePath, listsDir: null, allowlist: [ 'fallbackcjs' ] } )
+            ).rejects.toThrow()
         } )
     } )
 

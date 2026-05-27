@@ -36,6 +36,7 @@ class Pipeline {
         filePath,
         listsDir,
         allowlist,
+        resolveBase,
         selectionFiles,
         prefillTimeout,
         fetchFn,
@@ -105,7 +106,7 @@ class Pipeline {
         const sharedLists = await Pipeline.#loadSharedLists( { main, listsDir, warnings } )
 
         // Schritt 6: LibraryLoader
-        const libraries = await Pipeline.#loadLibraries( { main, allowlist, warnings } )
+        const libraries = await Pipeline.#loadLibraries( { main, allowlist, resolveBase, warnings } )
 
         const toolsObj = main[ 'tools' ] || {}
 
@@ -297,7 +298,7 @@ class Pipeline {
     }
 
 
-    static async #loadLibraries( { main, allowlist, warnings } ) {
+    static async #loadLibraries( { main, allowlist, resolveBase, warnings } ) {
         const rawRequired = main[ 'requiredLibraries' ]
         const effectiveRequired = Array.isArray( rawRequired ) ? rawRequired : []
 
@@ -310,7 +311,7 @@ class Pipeline {
         }
 
         const loaded = await LibraryLoader
-            .load( { requiredLibraries: effectiveRequired, allowlist } )
+            .load( { requiredLibraries: effectiveRequired, allowlist, resolveBase } )
 
         return loaded[ 'libraries' ]
     }
