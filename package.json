@@ -21,8 +21,19 @@
     "inspector": "npx @modelcontextprotocol/inspector"
   },
   "keywords": [],
-  "author": "",
+  "author": "FlowMCP",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FlowMCP/flowmcp-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FlowMCP/flowmcp-core/issues"
+  },
+  "homepage": "https://github.com/FlowMCP/flowmcp-core#readme",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",
     "better-sqlite3": "^12.6.2",
