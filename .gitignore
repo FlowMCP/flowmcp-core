@@ -5,3 +5,6 @@ ai
 coverage
 .env
 *.env
+
+# Memo strategy docs (project-level, never in repo)
+.memo/
