@@ -75,7 +75,7 @@ describe( 'ResourceDatabaseManager (v4)', () => {
         } )
 
 
-        it( 'RES010: fails when local file does not exist', async () => {
+        it( 'RES036: fails when local file does not exist', async () => {
             const result = await ResourceDatabaseManager.initialize( {
                 resources: {
                     sdn: {
@@ -89,12 +89,12 @@ describe( 'ResourceDatabaseManager (v4)', () => {
 
             expect( result.status ).toBe( false )
             expect( result.messages.length ).toBeGreaterThan( 0 )
-            expect( result.messages.some( ( m ) => m.includes( 'RES010' ) ) ).toBe( true )
+            expect( result.messages.some( ( m ) => m.includes( 'RES036' ) ) ).toBe( true )
             expect( result.messages.some( ( m ) => m.includes( 'Core does not download' ) ) ).toBe( true )
         } )
 
 
-        it( 'RES010: fails when path is missing', async () => {
+        it( 'RES036: fails when path is missing', async () => {
             const result = await ResourceDatabaseManager.initialize( {
                 resources: {
                     sdn: {
@@ -106,12 +106,12 @@ describe( 'ResourceDatabaseManager (v4)', () => {
             } )
 
             expect( result.status ).toBe( false )
-            expect( result.messages.some( ( m ) => m.includes( 'RES010' ) ) ).toBe( true )
+            expect( result.messages.some( ( m ) => m.includes( 'RES036' ) ) ).toBe( true )
             expect( result.messages.some( ( m ) => m.includes( "requires 'path'" ) ) ).toBe( true )
         } )
 
 
-        it( 'RES010: fails when path is empty string', async () => {
+        it( 'RES036: fails when path is empty string', async () => {
             const result = await ResourceDatabaseManager.initialize( {
                 resources: {
                     sdn: {
@@ -124,7 +124,7 @@ describe( 'ResourceDatabaseManager (v4)', () => {
             } )
 
             expect( result.status ).toBe( false )
-            expect( result.messages.some( ( m ) => m.includes( 'RES010' ) ) ).toBe( true )
+            expect( result.messages.some( ( m ) => m.includes( 'RES036' ) ) ).toBe( true )
         } )
 
 

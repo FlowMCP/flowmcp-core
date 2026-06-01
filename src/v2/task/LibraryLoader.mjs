@@ -53,7 +53,7 @@ class LibraryLoader {
         requiredLibraries
             .forEach( ( lib ) => {
                 if( !effectiveAllowlist.includes( lib ) ) {
-                    messages.push( `SEC013: Library "${lib}" is not on the allowlist` )
+                    messages.push( `SEC020: Library "${lib}" is not on the allowlist` )
                 }
             } )
 
