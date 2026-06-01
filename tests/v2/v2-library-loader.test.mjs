@@ -28,23 +28,23 @@ describe( 'LibraryLoader', () => {
         } )
 
 
-        test( 'throws SEC013 for unapproved library', async () => {
+        test( 'throws SEC020 for unapproved library', async () => {
             await expect(
                 LibraryLoader.load( {
                     requiredLibraries: [ 'dangerous-pkg' ],
                     allowlist: [ 'safe-pkg' ]
                 } )
-            ).rejects.toThrow( 'SEC013' )
+            ).rejects.toThrow( 'SEC020' )
         } )
 
 
-        test( 'throws SEC013 for library not in default allowlist', async () => {
+        test( 'throws SEC020 for library not in default allowlist', async () => {
             await expect(
                 LibraryLoader.load( {
                     requiredLibraries: [ 'unknown-lib' ],
                     allowlist: null
                 } )
-            ).rejects.toThrow( 'SEC013' )
+            ).rejects.toThrow( 'SEC020' )
         } )
 
 

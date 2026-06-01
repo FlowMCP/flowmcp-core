@@ -202,7 +202,7 @@ class ResourceDatabaseManager {
 
         if( path === undefined || typeof path !== 'string' || path.length === 0 ) {
             messages.push(
-                `RES010: Resource "${resourceName}": source='http' requires 'path' (local file)`
+                `RES036: Resource "${resourceName}": source='http' requires 'path' (local file)`
             )
 
             return
@@ -210,7 +210,7 @@ class ResourceDatabaseManager {
 
         if( !existsSync( path ) ) {
             messages.push(
-                `RES010: Resource "${resourceName}": source='http' requires an existing ` +
+                `RES036: Resource "${resourceName}": source='http' requires an existing ` +
                 `local file at path '${path}' (Core does not download — CLI must provide the file)`
             )
 
