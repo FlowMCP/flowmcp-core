@@ -448,6 +448,113 @@ describe( 'v4 MainValidator', () => {
         } )
     } )
 
+    describe( 'PB-2 — strict key validation (unknown/dead keys)', () => {
+        it( 'VAL003: rejects an unknown key at the main level', () => {
+            const main = buildValidMain( { foobar: 'dead-key' } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL003' ) && m.includes( 'main.foobar' ) ) ).toBe( true )
+        } )
+
+        it( 'VAL076: rejects an unknown key at the tool level', () => {
+            const tool = buildTool( { bogusField: true } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL076' ) && m.includes( 'getAbi.bogusField' ) ) ).toBe( true )
+        } )
+
+        it( 'VAL077: rejects an unknown key at the parameter level', () => {
+            const param = {
+                position: { key: 'k', value: 'v', location: 'query' },
+                z: { primitive: 'string' },
+                rogueKey: 1
+            }
+            const tool = buildTool( { parameters: [ param ] } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL077' ) && m.includes( 'rogueKey' ) ) ).toBe( true )
+        } )
+
+        it( 'accepts all known optional main keys (docs, schemaVersion, termsOfService, dataLicense)', () => {
+            const main = buildValidMain( {
+                docs: [ 'https://docs.example.com' ],
+                schemaVersion: '1.0.0',
+                termsOfService: 'https://example.com/tos',
+                termsOfServiceCheckedAt: '2026-06-03',
+                termsOfServiceLanguage: 'en',
+                dataLicense: 'https://example.com/license',
+                dataLicenseName: 'CC-BY-4.0',
+                headers: { Accept: 'application/json' }
+            } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( messages ).toHaveLength( 0 )
+        } )
+
+        it( 'accepts known tool key outputSchema and parameter key description', () => {
+            const param = {
+                position: { key: 'k', value: 'v', location: 'query' },
+                z: { primitive: 'string' },
+                description: 'a parameter'
+            }
+            const tool = buildTool( { parameters: [ param ], outputSchema: { type: 'object' } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( messages ).toHaveLength( 0 )
+        } )
+    } )
+
+    describe( 'PB-4 — docs/ToS warnings (VAL027/VAL028)', () => {
+        it( 'VAL027: warns when docs is missing', () => {
+            const main = buildValidMain( { termsOfService: 'no-tos-found' } )
+            const { status, warnings } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( warnings.some( ( w ) => w.startsWith( 'VAL027' ) ) ).toBe( true )
+        } )
+
+        it( 'VAL027: warns when docs is an empty array', () => {
+            const main = buildValidMain( { docs: [], termsOfService: 'no-tos-found' } )
+            const { warnings } = MainValidator.validate( { main } )
+            expect( warnings.some( ( w ) => w.startsWith( 'VAL027' ) ) ).toBe( true )
+        } )
+
+        it( 'VAL028: warns when termsOfService is missing', () => {
+            const main = buildValidMain( { docs: [ 'https://docs.example.com' ] } )
+            const { status, warnings } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( warnings.some( ( w ) => w.startsWith( 'VAL028' ) ) ).toBe( true )
+        } )
+
+        it( 'docs/ToS warnings are warnings, never hard errors', () => {
+            const main = buildValidMain()
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL027' ) || m.startsWith( 'VAL028' ) ) ).toBe( false )
+        } )
+
+        it( 'no docs/ToS warning when both are valid (URL form)', () => {
+            const main = buildValidMain( {
+                docs: [ 'https://docs.example.com' ],
+                termsOfService: 'https://example.com/tos'
+            } )
+            const { warnings } = MainValidator.validate( { main } )
+            expect( warnings.some( ( w ) => w.startsWith( 'VAL027' ) ) ).toBe( false )
+            expect( warnings.some( ( w ) => w.startsWith( 'VAL028' ) ) ).toBe( false )
+        } )
+
+        it( 'no VAL028 warning when termsOfService is the sentinel "no-tos-found"', () => {
+            const main = buildValidMain( {
+                docs: [ 'https://docs.example.com' ],
+                termsOfService: 'no-tos-found'
+            } )
+            const { warnings } = MainValidator.validate( { main } )
+            expect( warnings.some( ( w ) => w.startsWith( 'VAL028' ) ) ).toBe( false )
+        } )
+    } )
+
     describe( 'sharedLists validation', () => {
         it( 'rejects sharedLists missing ref', () => {
             const main = buildValidMain( { sharedLists: [ { version: '1.0.0' } ] } )

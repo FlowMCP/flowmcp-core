@@ -9,6 +9,51 @@
  * For more information, see LICENSE.md and DISCLAIMER.md in the repo root.
  */
 
+const ALLOWED_MAIN_KEYS = [
+    'namespace',
+    'name',
+    'description',
+    'version',
+    'schemaVersion',
+    'root',
+    'tools',
+    'routes',
+    'resources',
+    'docs',
+    'tags',
+    'requiredServerParams',
+    'requiredLibraries',
+    'headers',
+    'sharedLists',
+    'meta',
+    'handlers',
+    'skills',
+    'termsOfService',
+    'termsOfServiceCheckedAt',
+    'termsOfServiceLanguage',
+    'dataLicense',
+    'dataLicenseName'
+]
+
+const ALLOWED_TOOL_KEYS = [
+    'method',
+    'path',
+    'description',
+    'parameters',
+    'output',
+    'outputSchema',
+    'preload',
+    'tests',
+    'meta'
+]
+
+const ALLOWED_PARAMETER_KEYS = [
+    'position',
+    'z',
+    'description'
+]
+
+
 class MainValidator {
     static validate( { main } ) {
         const messages = []
@@ -30,6 +75,16 @@ class MainValidator {
             messages.push( 'VAL016 main.skills: Forbidden in v4.0.0 — Skills are namespace-, selection-, or agent-scoped (see 14-skills.md)' )
         }
 
+        MainValidator.#validateStrictKeys( {
+            container: main,
+            allowedKeys: ALLOWED_MAIN_KEYS,
+            prefix: 'main',
+            code: 'VAL003',
+            messages
+        } )
+
+        MainValidator.#validateProvenance( { main, warnings } )
+
         MainValidator.#validateTopLevel( { main, messages, warnings } )
 
         if( messages.length > 0 ) {
@@ -45,6 +100,42 @@ class MainValidator {
         const status = messages.length === 0
 
         return { status, messages, warnings }
+    }
+
+
+    static #validateStrictKeys( { container, allowedKeys, prefix, code, messages } ) {
+        if( container === null || typeof container !== 'object' || Array.isArray( container ) ) {
+            return
+        }
+
+        const allowed = new Set( allowedKeys )
+
+        Object.keys( container )
+            .forEach( ( key ) => {
+                if( !allowed.has( key ) ) {
+                    messages.push( `${code} ${prefix}.${key}: Unknown field — not allowed by the v4 schema shape` )
+                }
+            } )
+    }
+
+
+    static #validateProvenance( { main, warnings } ) {
+        const docs = main[ 'docs' ]
+        const docsValid = Array.isArray( docs )
+            && docs.length > 0
+            && docs.every( ( entry ) => typeof entry === 'string' && entry.length > 0 )
+
+        if( !docsValid ) {
+            warnings.push( 'VAL027 warning main.docs: Must be a non-empty array of documentation URL strings (will escalate to error in a future release)' )
+        }
+
+        const tos = main[ 'termsOfService' ]
+        const tosValid = tos === 'no-tos-found'
+            || ( typeof tos === 'string' && tos.startsWith( 'https://' ) )
+
+        if( !tosValid ) {
+            warnings.push( 'VAL028 warning main.termsOfService: Must be a URL string or the sentinel "no-tos-found" (will escalate to error in a future release)' )
+        }
     }
 
 
@@ -165,6 +256,13 @@ class MainValidator {
                 const tool = toolsObj[ toolName ]
                 const prefix = `main.${toolsKey}.${toolName}`
 
+                MainValidator.#validateStrictKeys( {
+                    container: tool,
+                    allowedKeys: ALLOWED_TOOL_KEYS,
+                    prefix,
+                    code: 'VAL076',
+                    messages
+                } )
                 MainValidator.#validateSingleRoute( { route: tool, prefix, messages } )
                 MainValidator.#validateTestCount( { tool, toolName, isV3, messages, warnings } )
                 MainValidator.#validateMeta( { tool, toolName, messages } )
@@ -323,6 +421,13 @@ class MainValidator {
         } else {
             route[ 'parameters' ]
                 .forEach( ( param, index ) => {
+                    MainValidator.#validateStrictKeys( {
+                        container: param,
+                        allowedKeys: ALLOWED_PARAMETER_KEYS,
+                        prefix: `${prefix}.parameters[${index}]`,
+                        code: 'VAL077',
+                        messages
+                    } )
                     MainValidator.#validateParameter( {
                         param,
                         prefix: `${prefix}.parameters[${index}]`,
