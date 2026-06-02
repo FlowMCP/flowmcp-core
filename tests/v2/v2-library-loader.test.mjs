@@ -91,7 +91,7 @@ describe( 'LibraryLoader', () => {
                     requiredLibraries: [ 'fallbackcjs' ],
                     resolveBase: fallbackBase
                 } )
-            ).rejects.toThrow( 'SEC013' )
+            ).rejects.toThrow( 'SEC020' )
         } )
     } )
 
