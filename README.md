@@ -2,6 +2,8 @@
 
 # FlowMCP Core
 
+**Version:** 3.0.0
+
 A comprehensive framework for adapting existing web APIs into a standardized Model Context Protocol (MCP) interface, enabling structured, testable, and semantically consistent access for AI systems. FlowMCP Core transforms any REST API into MCP-compatible tools with built-in validation, testing, and error handling.
 
 ## Features
