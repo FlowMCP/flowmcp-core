@@ -369,7 +369,7 @@ if( !result.status ) {
 
 ## Skills-only Schemas (kba, handelsregister, etsi-ipr)
 
-Schemas with `tools: {}` that relied on `main.skills` for browser automation have been migrated to **CLI-Skills** (Option A — outside the Core pipeline). They are no longer processed by the v4 Core pipeline. See Memo 028 (Schema Migration) for repository-level details.
+Schemas with `tools: {}` that relied on `main.skills` for browser automation have been migrated to **CLI-Skills** (Option A — outside the Core pipeline). They are no longer processed by the v4 Core pipeline.
 
 ## Migration Checklist
 
