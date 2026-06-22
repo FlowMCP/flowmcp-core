@@ -15,7 +15,7 @@ A comprehensive framework for adapting existing web APIs into a standardized Mod
 - **Capture Flow**: Live response capture with `OutputSchemaGenerator` to auto-derive output schemas from real API responses
 - **One-Shot Skills**: `SkillContentGenerator` renders self-contained skill content from schema + sharedLists
 - **Meta-Block per Tool**: Every v4 tool declares `isReadOnly`, `isConcurrencySafe`, `isDestructive`, `searchHint`, `aliases`, `alwaysLoad` — generated/validated via `MetaGenerator`
-- **Skills-only Sonderpfad**: Schemas with `tools: {}` are recognised after validation and short-circuit the pipeline (Schritte 7–9, 11–15 skipped)
+- **Skills-only special path**: Schemas with `tools: {}` are recognised after validation and short-circuit the pipeline (steps 7–9, 11–15 skipped)
 - **Library Loading**: Allowlisted runtime library injection through `LibraryLoader` (with `mergeAllowlist`)
 - **Resource Database Manager**: SQLite-backed resource initialisation via `ResourceDatabaseManager`
 - **Security Scanner**: Static scan for forbidden patterns (eval, imports) before any module is loaded
@@ -42,7 +42,7 @@ import * as v4 from 'flowmcp-core/v4'
 
 const { Pipeline } = v4
 
-// v4 Pipeline — loads, validates, and returns a result-Objekt
+// v4 Pipeline — loads, validates, and returns a result object
 const result = await Pipeline
     .load( {
         filePath: './schemas/etherscan-io/etherscan.mjs',
@@ -131,9 +131,9 @@ The v4 API is exported via `flowmcp-core/v4`. Each module is a focused, static c
 }
 ```
 
-### Skills-only Sonderpfad
+### Skills-only special path
 
-When `Object.keys( main.tools ).length === 0` the pipeline takes a Sonderpfad after step 6: HandlerFactory, SelectionLoader, PrefillExecutor, PlaceholderResolver, ResourceValidator, and PromptLoader are all skipped. `handlerMap` and `resourceHandlerMap` return `{}`. Note: `main.skills` is forbidden in v4 — use the top-level `skills` export instead. The Sonderpfad therefore returns `skills: {}` for v4 schemas.
+When `Object.keys( main.tools ).length === 0` the pipeline takes a special path after step 6: HandlerFactory, SelectionLoader, PrefillExecutor, PlaceholderResolver, ResourceValidator, and PromptLoader are all skipped. `handlerMap` and `resourceHandlerMap` return `{}`. Note: `main.skills` is forbidden in v4 — use the top-level `skills` export instead. The special path therefore returns `skills: {}` for v4 schemas.
 
 ## v4 Schema Structure
 
@@ -269,7 +269,7 @@ Schema authors should pair each tool with a `tests` array carrying at least one 
 - The pipeline is async and runs independent steps concurrently where possible (selections, prefill, library loading).
 - `SecurityScanner` and `SchemaLoader` use static analysis and dynamic import — no eval, no spawned processes.
 - Heuristic helpers (`MetaGenerator.generateForSchema`, `OutputSchemaGenerator.generateFromResponse`) avoid recomputation by caching per-tool / per-response.
-- The Skills-only Sonderpfad short-circuits the pipeline, keeping load times minimal for browser-automation schemas.
+- The Skills-only special path short-circuits the pipeline, keeping load times minimal for browser-automation schemas.
 
 ## Documentation
 
