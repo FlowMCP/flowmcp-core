@@ -427,6 +427,54 @@ describe( 'v4 MainValidator', () => {
             expect( status ).toBe( false )
             expect( messages.some( ( m ) => m.includes( 'database' ) && m.includes( '.db' ) ) ).toBe( true )
         } )
+
+        function buildMarkdownResource() {
+            return {
+                source: 'markdown',
+                origin: 'inline',
+                name: 'test-about.md',
+                description: 'About this namespace'
+            }
+        }
+
+        it( 'accepts a valid markdown resource (about)', () => {
+            const main = buildValidMain( { resources: { about: buildMarkdownResource() } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( messages ).toHaveLength( 0 )
+        } )
+
+        it( 'rejects markdown name without .md suffix', () => {
+            const resource = { ...buildMarkdownResource(), name: 'test-about' }
+            const main = buildValidMain( { resources: { about: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'name' ) && m.includes( '.md' ) ) ).toBe( true )
+        } )
+
+        it( 'rejects markdown resource missing origin', () => {
+            const resource = { source: 'markdown', name: 'test-about.md', description: 'd' }
+            const main = buildValidMain( { resources: { about: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'origin' ) && m.includes( 'Missing' ) ) ).toBe( true )
+        } )
+
+        it( 'rejects markdown resource carrying database/queries', () => {
+            const resource = { ...buildMarkdownResource(), database: 'x.db', queries: {} }
+            const main = buildValidMain( { resources: { about: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'database' ) && m.includes( 'Not allowed' ) ) ).toBe( true )
+        } )
+
+        it( 'rejects an unknown resource source', () => {
+            const resource = { source: 'yaml', origin: 'inline', name: 'x.yaml', description: 'd' }
+            const main = buildValidMain( { resources: { thing: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'source' ) && m.includes( 'markdown' ) ) ).toBe( true )
+        } )
     } )
 
     describe( 'parameters validation', () => {
