@@ -23,6 +23,7 @@ import { IdResolver } from './task/IdResolver.mjs'
 import { AgentManifestLoader } from './task/AgentManifestLoader.mjs'
 import { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
 import { ZodBuilder } from './task/ZodBuilder.mjs'
+import { ResourceDatabaseManager } from './task/ResourceDatabaseManager.mjs'
 
 
 class FlowMCP {
