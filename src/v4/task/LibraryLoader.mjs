@@ -11,6 +11,7 @@
 
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 
 class LibraryLoader {
@@ -131,6 +132,116 @@ class LibraryLoader {
             }, { resolved: false, value: null, lastError: null } )
 
         return outcome
+    }
+
+
+    // Memo 152 / PRD-018 (D-06, F17=A) — external requiredLibraries resolution, ported from
+    // the CLI (#resolveHandlers requiredLibraries block + #loadOneLibrary, Memo 119/150). This
+    // is the Memo-150 model: libraries resolve from the caller-supplied ordered `resolveBases`
+    // (allowed-libraries -> CLI base -> schema dir); the CLI computes those paths and passes
+    // them in, so core stays env-free. There is deliberately NO name-allowlist here: the gate is
+    // folder presence (installed = allowed, Memo 150 F7) and it stays with the CLI. The separate
+    // #defaultAllowlist / load() SEC020 path is untouched (still used by the grading-det pipeline).
+    //
+    // Three failure classes are distinguished (Memo 119):
+    //   - NOT-INSTALLED     — no base can `require.resolve` the lib -> LIB-001 (coded fail-loud,
+    //                         carries the exact `npm install --prefix <base>` command).
+    //   - INSTALLED-BUT-UNLOADABLE — a base resolves the lib but load throws (native binding
+    //                         missing / built for a different Node.js ABI) -> LIB-BINDING (left
+    //                         UNCODED on purpose so the CLI logs+degrades: it needs a rebuild, not
+    //                         an install; NEVER the misleading LIB-001 "install it" path).
+    //   - per-base resolve miss — surfaced as LIB-002 through the optional `emit` callback
+    //                         (defaults to a noop so core does no I/O of its own; the CLI wires it
+    //                         to CliOutput.emitCoded).
+    // LIB-BINDING takes precedence over LIB-001 (a broken binding is reported before a missing one).
+    static async resolveExternal( { requiredLibraries, resolveBases, installHintBase, emit } ) {
+        const effectiveRequired = Array.isArray( requiredLibraries ) ? requiredLibraries : []
+
+        if( effectiveRequired.length === 0 ) {
+            return { libraries: {} }
+        }
+
+        const orderedBases = Array.isArray( resolveBases ) ? resolveBases : []
+        const emitFn = typeof emit === 'function' ? emit : () => {}
+        const requires = orderedBases
+            .map( ( base ) => createRequire( join( base, 'index.js' ) ) )
+
+        const libraries = {}
+        const notInstalled = []
+        const loadFailed = []
+
+        await effectiveRequired
+            .reduce( ( promise, lib ) => promise.then( async () => {
+                const loaded = await LibraryLoader
+                    .#loadOneFromBases( { lib, requires, emit: emitFn } )
+
+                if( loaded[ 'status' ] === true ) {
+                    libraries[ lib ] = loaded[ 'module' ]
+                } else if( loaded[ 'loadError' ] !== null && loaded[ 'loadError' ] !== undefined ) {
+                    loadFailed.push( { lib, reason: loaded[ 'loadError' ] } )
+                } else {
+                    notInstalled.push( lib )
+                }
+            } ), Promise.resolve() )
+
+        if( loadFailed.length > 0 ) {
+            const detail = loadFailed
+                .map( ( entry ) => `${entry.lib} (${entry.reason})` )
+                .join( '; ' )
+
+            throw new Error( `LIB-BINDING: required librar${loadFailed.length === 1 ? 'y is' : 'ies are'} installed but failed to load — a native binding is missing or built for a different Node.js ABI: ${detail}. Rebuild the native module (e.g. "npm rebuild ${loadFailed[ 0 ].lib}" in the CLI, or reinstall it). This is NOT a missing dependency.` )
+        }
+
+        if( notInstalled.length > 0 ) {
+            const hintBase = typeof installHintBase === 'string' && installHintBase.length > 0
+                ? installHintBase
+                : '<allowed-libraries>'
+
+            throw new Error( `LIB-001 required librar${notInstalled.length === 1 ? 'y' : 'ies'} not resolvable from allowed-libraries (${hintBase}), CLI base, nor schema dir: ${notInstalled.join( ', ' )}. Install into allowed-libraries: npm install --prefix ${hintBase} ${notInstalled.join( ' ' )}` )
+        }
+
+        return { libraries }
+    }
+
+
+    static async #loadOneFromBases( { lib, requires, emit } ) {
+        // Ported 1:1 from CLI #loadOneLibrary (Memo 119/150). `requires` is the ordered
+        // resolution chain; the first base that resolves + loads the lib wins. A base that
+        // resolves the lib but fails to load flags loadError (INSTALLED-BUT-UNLOADABLE) — never
+        // collapsed into a "not installed" miss.
+        let loadError = null
+
+        const attempt = await requires
+            .reduce( async ( accPromise, req ) => {
+                const acc = await accPromise
+
+                if( acc[ 'status' ] === true ) {
+                    return acc
+                }
+
+                let resolvedPath = null
+                try {
+                    resolvedPath = req.resolve( lib )
+                } catch( resolveErr ) {
+                    emit( { code: 'LIB-002', location: 'loadOneLibrary: require base could not resolve lib', err: resolveErr } )
+                    return acc
+                }
+
+                try {
+                    const mod = await import( pathToFileURL( resolvedPath ).href )
+                    return { status: true, module: mod.default || mod }
+                } catch( importErr ) {
+                    try {
+                        const mod = req( lib )
+                        return { status: true, module: mod.default || mod }
+                    } catch( requireErr ) {
+                        loadError = requireErr.message || importErr.message
+                        return acc
+                    }
+                }
+            }, Promise.resolve( { status: false, module: null } ) )
+
+        return { ...attempt, loadError }
     }
 
 

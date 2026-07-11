@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath( import.meta.url )
 const __dirname = dirname( __filename )
 const fallbackBase = join( __dirname, 'fixtures', 'loader-fallback' )
+const bindingBase = join( __dirname, 'fixtures', 'loader-binding' )
 
 
 describe( 'LibraryLoader', () => {
@@ -92,6 +93,177 @@ describe( 'LibraryLoader', () => {
                     resolveBase: fallbackBase
                 } )
             ).rejects.toThrow( 'SEC020' )
+        } )
+    } )
+
+
+    // Memo 152 / PRD-018 (D-06) — external requiredLibraries resolution ported from the CLI
+    // (#resolveHandlers / #loadOneLibrary, Memo 119/150). These pin the codes, the exact message
+    // texts, the base ordering and the LIB-002 emit that the 6 CLI suites depend on byte-for-byte.
+    describe( 'resolveExternal() — Memo 150 external library gate (F17=A)', () => {
+        test( 'returns {} when no libraries are required', async () => {
+            const { libraries } = await LibraryLoader
+                .resolveExternal( { requiredLibraries: [], resolveBases: [ fallbackBase ] } )
+
+            expect( libraries ).toEqual( {} )
+        } )
+
+
+        test( 'returns {} when requiredLibraries is null', async () => {
+            const { libraries } = await LibraryLoader
+                .resolveExternal( { requiredLibraries: null, resolveBases: [ fallbackBase ] } )
+
+            expect( libraries ).toEqual( {} )
+        } )
+
+
+        test( 'applies NO name-allowlist — resolves any lib present in a base (Memo 150 F7)', async () => {
+            // 'fallbackcjs' is NOT on the core #defaultAllowlist; resolveExternal still loads it
+            // because the gate is folder presence, owned by the CLI — not a name-allowlist.
+            const { libraries } = await LibraryLoader.resolveExternal( {
+                requiredLibraries: [ 'fallbackcjs' ],
+                resolveBases: [ fallbackBase ]
+            } )
+
+            expect( libraries[ 'fallbackcjs' ] ).toBeDefined()
+            expect( libraries[ 'fallbackcjs' ].marker ).toBe( 'loaded-via-createRequire-fallback' )
+        } )
+
+
+        test( 'resolves a library found only in base 3 of 3 (ordered chain)', async () => {
+            const { libraries } = await LibraryLoader.resolveExternal( {
+                requiredLibraries: [ 'fallbackcjs' ],
+                resolveBases: [ '/no/such/base-one', '/no/such/base-two', fallbackBase ]
+            } )
+
+            expect( libraries[ 'fallbackcjs' ].marker ).toBe( 'loaded-via-createRequire-fallback' )
+        } )
+
+
+        test( 'emits LIB-002 for each base that cannot resolve the lib', async () => {
+            const emitted = []
+            const emit = ( event ) => { emitted.push( event ) }
+
+            await LibraryLoader.resolveExternal( {
+                requiredLibraries: [ 'fallbackcjs' ],
+                resolveBases: [ '/no/such/base-one', '/no/such/base-two', fallbackBase ],
+                emit
+            } )
+
+            const lib002 = emitted.filter( ( e ) => e[ 'code' ] === 'LIB-002' )
+            expect( lib002.length ).toBe( 2 )
+            expect( lib002[ 0 ][ 'location' ] ).toBe( 'loadOneLibrary: require base could not resolve lib' )
+        } )
+
+
+        test( 'throws coded LIB-001 with the exact npm install --prefix command when nowhere resolvable', async () => {
+            const hint = '/tmp/allowed-libs-core-test'
+
+            await expect(
+                LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'flowmcp-nowhere-lib' ],
+                    resolveBases: [ '/no/such/base-one', '/no/such/base-two' ],
+                    installHintBase: hint
+                } )
+            ).rejects.toThrow( /LIB-001[\s\S]*npm install --prefix/ )
+        } )
+
+
+        test( 'LIB-001 message names the lib, the singular wording and the hint base', async () => {
+            const hint = '/tmp/allowed-libs-core-test'
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'flowmcp-nowhere-lib' ],
+                    resolveBases: [ '/no/such/base' ],
+                    installHintBase: hint
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            expect( message ).toContain( 'LIB-001 required library not resolvable' )
+            expect( message ).toContain( `allowed-libraries (${hint})` )
+            expect( message ).toContain( 'CLI base, nor schema dir' )
+            expect( message ).toContain( `npm install --prefix ${hint} flowmcp-nowhere-lib` )
+        } )
+
+
+        test( 'LIB-001 uses plural wording for multiple missing libraries', async () => {
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'flowmcp-nowhere-a', 'flowmcp-nowhere-b' ],
+                    resolveBases: [ '/no/such/base' ],
+                    installHintBase: '/tmp/al'
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            expect( message ).toContain( 'LIB-001 required libraries not resolvable' )
+            expect( message ).toContain( 'flowmcp-nowhere-a, flowmcp-nowhere-b' )
+            expect( message ).toContain( 'flowmcp-nowhere-a flowmcp-nowhere-b' )
+        } )
+
+
+        test( 'distinguishes installed-but-unloadable (LIB-BINDING) from not-installed (LIB-001)', async () => {
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'broken-native-core-test' ],
+                    resolveBases: [ bindingBase ],
+                    installHintBase: '/tmp/al'
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            expect( message ).toContain( 'LIB-BINDING' )
+            expect( message ).toContain( 'broken-native-core-test' )
+            expect( message ).toContain( 'Rebuild the native module' )
+            expect( message ).toContain( 'This is NOT a missing dependency.' )
+            expect( message ).not.toContain( 'LIB-001' )
+            expect( message ).not.toContain( 'LIB-RESOLVE' )
+        } )
+
+
+        test( 'LIB-BINDING is deliberately uncoded (does not match the PREFIX-NNN code shape)', async () => {
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'broken-native-core-test' ],
+                    resolveBases: [ bindingBase ]
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            // The CLI catch routes coded (/^[A-Z]{3,4}-\d{3}/) errors to re-throw and uncoded to
+            // log+degrade. LIB-BINDING must NOT match, so a broken binding degrades (needs rebuild).
+            expect( /^[A-Z]{3,4}-\d{3}/.test( message ) ).toBe( false )
+        } )
+
+
+        test( 'LIB-BINDING wins over LIB-001 when both a broken and a missing lib are declared', async () => {
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'flowmcp-nowhere-lib', 'broken-native-core-test' ],
+                    resolveBases: [ bindingBase ],
+                    installHintBase: '/tmp/al'
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            expect( message ).toContain( 'LIB-BINDING' )
+            expect( message ).not.toContain( 'LIB-001' )
         } )
     } )
 
