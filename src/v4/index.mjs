@@ -26,6 +26,9 @@ export { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
 export { SkillValidator } from './task/SkillValidator.mjs'
 export { IdResolver } from './task/IdResolver.mjs'
 
+// Memo 152 / PRD-018 (D-07) — namespace-catalog build ported out of the CLI
+export { CatalogIndex } from './task/CatalogIndex.mjs'
+
 // Phase 4 — Resource handling
 export { ResourceDatabaseManager } from './task/ResourceDatabaseManager.mjs'
 

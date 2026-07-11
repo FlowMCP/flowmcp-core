@@ -48,6 +48,90 @@ class IdResolver {
     }
 
 
+    // Memo 152 / PRD-018 (D-07) — the CLI spec-id grammar moved here. It is a
+    // Spec concern (namespace/tool/name + optional "<source>:" prefix reach into
+    // the MCP tool name), not CLI-private logic. Distinct from parse() above:
+    // this carries the "<source>:" coordinate, the 'namespace'/'schema' levels
+    // and the per-test "<ns>/tool/<name>/tests/<N>" selector. No silent default —
+    // every malformed form is a hard { valid:false, error } (kept verbatim from
+    // the CLI so existing CLI collision/parse suites stay byte-compatible).
+    static parseSpecId( { specId } ) {
+        if( typeof specId !== 'string' || specId.length === 0 ) {
+            return { 'valid': false, 'error': 'Spec-ID must be a non-empty string' }
+        }
+
+        let source = null
+        let rest = specId
+        const colonIndex = specId.indexOf( ':' )
+        if( colonIndex !== -1 ) {
+            source = specId.slice( 0, colonIndex )
+            rest = specId.slice( colonIndex + 1 )
+
+            if( source.length === 0 ) {
+                return { 'valid': false, 'error': `Invalid source coordinate in "${specId}": the prefix before ":" must be a schemaFolders[] name.` }
+            }
+
+            if( rest.length === 0 ) {
+                return { 'valid': false, 'error': `Invalid Spec-ID "${specId}": nothing after the "${source}:" source prefix. Expected "${source}:<namespace>[/tool/name]".` }
+            }
+        }
+
+        const parts = rest.split( '/' )
+        const slashCount = parts.length - 1
+
+        if( slashCount === 0 ) {
+            const [ namespace ] = parts
+            const namespaceValid = /^[a-z][a-z0-9-]*$/.test( namespace )
+
+            if( namespaceValid === false ) {
+                return { 'valid': false, 'error': `Invalid namespace "${namespace}": expected a lowercase identifier matching ^[a-z][a-z0-9-]*$ (e.g. "etherscan").` }
+            }
+
+            return { 'valid': true, source, namespace, 'type': 'namespace' }
+        }
+
+        if( slashCount === 1 ) {
+            const [ namespace, name ] = parts
+
+            return { 'valid': true, source, namespace, 'type': 'schema', name }
+        }
+
+        if( slashCount === 2 ) {
+            const [ namespace, type, name ] = parts
+            const allowedTypes = [ 'tool', 'resource', 'prompt', 'skill', 'selection', 'agent' ]
+            const isAllowed = allowedTypes
+                .find( ( t ) => {
+                    const matches = t === type
+
+                    return matches
+                } )
+
+            if( !isAllowed ) {
+                return { 'valid': false, 'error': `Unknown Spec-ID type "${type}": expected one of tool|resource|prompt|skill|selection|agent. Example: "${namespace}/tool/${name || 'someRoute'}".` }
+            }
+
+            return { 'valid': true, source, namespace, type, name }
+        }
+
+        if( slashCount === 4 ) {
+            const [ namespace, kind, name, sub, indexRaw ] = parts
+            if( kind !== 'tool' || sub !== 'tests' ) {
+                return { 'valid': false, 'error': `Invalid per-test Spec-ID "${specId}": expected "<namespace>/tool/<name>/tests/<N>".` }
+            }
+            if( /^[1-9][0-9]*$/.test( indexRaw ) === false ) {
+                return { 'valid': false, 'error': `Invalid test index "${indexRaw}" in "${specId}": expected a positive 1-based integer.` }
+            }
+
+            return { 'valid': true, source, namespace, 'type': 'test', name, 'testIndex': Number( indexRaw ) }
+        }
+
+        return {
+            'valid': false,
+            'error': `Invalid Spec-ID format: "${specId}". Valid forms: "<namespace>" (whole provider), "<namespace>/<schema-name>" (1 slash = schema), "<namespace>/tool/<name>" (2 slashes = tool), "<namespace>/tool/<name>/tests/<N>" (4 slashes = one test). Optional "<source>:" prefix. Example: "etherscan/tool/getBalance".`
+        }
+    }
+
+
     static resolve( { id, registry } ) {
         const { namespace, type, name, error } = IdResolver.parse( { id } )
 
