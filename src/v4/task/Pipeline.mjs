@@ -40,13 +40,14 @@ class Pipeline {
         selectionFiles,
         prefillTimeout,
         fetchFn,
-        userParams
+        userParams,
+        skipScan = false
     } ) {
         const warnings = []
 
-        // Schritt 1: SecurityScanner
+        // Schritt 1: SecurityScanner (skipScan=false = scan on; trusted loads pass skipScan=true)
         const { status: scanStatus, messages: scanMessages } = await SecurityScanner
-            .scan( { filePath } )
+            .scan( { filePath, skipScan } )
 
         if( !scanStatus ) {
             return Pipeline.#buildResult( {
