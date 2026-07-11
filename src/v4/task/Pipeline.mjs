@@ -37,29 +37,48 @@ class Pipeline {
         listsDir,
         allowlist,
         resolveBase,
+        resolveBases,
+        libraries: injectedLibraries,
         selectionFiles,
         prefillTimeout,
         fetchFn,
         userParams,
-        skipScan = false
+        skipScan = false,
+        stages,
+        strict = false,
+        bustCache = false
     } ) {
         const warnings = []
 
-        // Schritt 1: SecurityScanner (skipScan=false = scan on; trusted loads pass skipScan=true)
-        const { status: scanStatus, messages: scanMessages } = await SecurityScanner
-            .scan( { filePath, skipScan } )
+        // CLI<->core load contract (Memo 152 / PRD-008, B-08). Every switch is an
+        // explicit, documented option — no hidden defaults:
+        //   stages    — per-stage toggles (scan/skills/prefill/resources/selections),
+        //               each defaults to ON; Light-Mode passes them OFF.
+        //   skipScan  — the single scan switch (PRD-007); skipScan:true == scan OFF.
+        //   strict    — fail-loud coded errors (LST-001/HND-001/LIB-001) instead of
+        //               silent PIPE-WARN degradation (F17=A / Memo 149).
+        //   bustCache — force a fresh module import of the schema file.
+        //   resolveBases[] / libraries — Memo-150 ordered library resolution or a
+        //               pre-resolved injection (core stays env-free).
+        const effectiveStages = Pipeline.#resolveStages( { stages, skipScan } )
 
-        if( !scanStatus ) {
-            return Pipeline.#buildResult( {
-                status: false,
-                messages: scanMessages,
-                warnings
-            } )
+        // Schritt 1: SecurityScanner (trusted loads skip the scan; default = scan on)
+        if( effectiveStages.scan ) {
+            const { status: scanStatus, messages: scanMessages } = await SecurityScanner
+                .scan( { filePath } )
+
+            if( !scanStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: scanMessages,
+                    warnings
+                } )
+            }
         }
 
         // Schritt 2: SchemaLoader
         const loaded = await SchemaLoader
-            .load( { filePath } )
+            .load( { filePath, bustCache } )
 
         if( loaded[ 'messages' ] && loaded[ 'messages' ].length > 0 ) {
             loaded[ 'messages' ]
@@ -89,18 +108,24 @@ class Pipeline {
         }
 
         // Schritt 5: SharedListResolver
-        const sharedLists = await Pipeline.#loadSharedLists( { main, listsDir, warnings } )
+        const sharedLists = await Pipeline.#loadSharedLists( { main, listsDir, warnings, strict } )
 
         // Schritt 6: LibraryLoader
-        const libraries = await Pipeline.#loadLibraries( { main, allowlist, resolveBase, warnings } )
+        const libraries = await Pipeline.#loadLibraries( {
+            main,
+            allowlist,
+            resolveBase,
+            resolveBases,
+            injectedLibraries,
+            strict
+        } )
 
         const toolsObj = main[ 'tools' ] || {}
 
         // Schritt 7: SelectionLoader (optional — only if selectionFiles provided)
-        const { selections, selectionMessages } = await Pipeline.#loadSelections( {
-            selectionFiles,
-            warnings
-        } )
+        const { selections, selectionMessages } = effectiveStages.selections
+            ? await Pipeline.#loadSelections( { selectionFiles, warnings } )
+            : { selections: {}, selectionMessages: [] }
 
         if( selectionMessages.length > 0 ) {
             return Pipeline.#buildResult( {
@@ -129,93 +154,98 @@ class Pipeline {
             } )
         }
 
-        // Schritt 9: HandlerFactory
+        // Schritt 9: HandlerFactory (strict wraps a factory error as HND-001)
         const routeNames = Object.keys( toolsObj )
-        const { handlerMap, resourceHandlerMap } = HandlerFactory
-            .create( {
-                handlersFn,
-                sharedLists,
-                libraries,
-                routeNames,
-                resources: main[ 'resources' ]
-            } )
-
-        // Schritt 10: SkillLoader + SkillValidator v4
-        const {
-            status: skillStatus,
-            messages: skillMessages,
-            skills
-        } = await Pipeline.#loadAndValidateSkills( {
-            main,
-            filePath,
-            toolsObj,
-            warnings
+        const { handlerMap, resourceHandlerMap } = Pipeline.#createHandlers( {
+            handlersFn,
+            sharedLists,
+            libraries,
+            routeNames,
+            resources: main[ 'resources' ],
+            strict
         } )
 
-        if( !skillStatus ) {
-            return Pipeline.#buildResult( {
-                status: false,
+        // Schritt 10-13: Skills stage (SkillLoader/-Validator, content, prefill,
+        // placeholder resolution). Light-Mode skips it entirely.
+        let skills = {}
+        let contentMap = null
+        let prefillResults = new Map()
+        let resolvedSkills = {}
+
+        if( effectiveStages.skills ) {
+            const {
+                status: skillStatus,
                 messages: skillMessages,
+                skills: loadedSkills
+            } = await Pipeline.#loadAndValidateSkills( {
                 main,
-                handlerMap,
-                resourceHandlerMap,
-                sharedLists,
-                libraries,
+                filePath,
+                toolsObj,
                 warnings
+            } )
+
+            if( !skillStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: skillMessages,
+                    main,
+                    handlerMap,
+                    resourceHandlerMap,
+                    sharedLists,
+                    libraries,
+                    warnings
+                } )
+            }
+
+            skills = loadedSkills
+
+            const generated = SkillContentGenerator
+                .generate( { schemas: [ main ], sharedLists } )
+            contentMap = generated[ 'contentMap' ]
+
+            if( effectiveStages.prefill ) {
+                prefillResults = await Pipeline.#runPrefill( {
+                    skills,
+                    userParams,
+                    fetchFn,
+                    prefillTimeout,
+                    warnings
+                } )
+            }
+
+            const catalog = Pipeline.#buildCatalog( { main, skills, contentMap } )
+
+            resolvedSkills = Pipeline.#resolveSkillContents( {
+                skills,
+                catalog,
+                sharedLists,
+                userParams,
+                prefillResults
             } )
         }
 
-        // Schritt 11: SkillContentGenerator
-        const { contentMap } = SkillContentGenerator
-            .generate( {
-                schemas: [ main ],
-                sharedLists
-            } )
-
-        // Schritt 12: PrefillExecutor (per skill)
-        const prefillResults = await Pipeline.#runPrefill( {
-            skills,
-            userParams,
-            fetchFn,
-            prefillTimeout,
-            warnings
-        } )
-
-        // Schritt 13: PlaceholderResolver — build catalog so consumers can resolve
-        const catalog = Pipeline.#buildCatalog( {
-            main,
-            skills,
-            contentMap
-        } )
-
-        const resolvedSkills = Pipeline.#resolveSkillContents( {
-            skills,
-            catalog,
-            sharedLists,
-            userParams,
-            prefillResults
-        } )
-
         // Schritt 14: ResourceValidator + ResourceDatabaseManager v4
-        const { status: resStatus, messages: resMessages } = await Pipeline.#initializeResources( {
-            main,
-            filePath,
-            warnings
-        } )
-
-        if( !resStatus ) {
-            return Pipeline.#buildResult( {
-                status: false,
-                messages: resMessages,
+        if( effectiveStages.resources ) {
+            const { status: resStatus, messages: resMessages } = await Pipeline.#initializeResources( {
                 main,
-                handlerMap,
-                resourceHandlerMap,
-                sharedLists,
-                libraries,
-                skills: resolvedSkills,
-                selections,
+                filePath,
                 warnings
             } )
+
+            if( !resStatus ) {
+                return Pipeline.#buildResult( {
+                    status: false,
+                    messages: resMessages,
+                    main,
+                    handlerMap,
+                    resourceHandlerMap,
+                    sharedLists,
+                    libraries,
+                    skills: resolvedSkills,
+                    selections,
+                    warnings
+                } )
+            }
         }
 
         // Schritt 15: PromptValidator + PromptLoader
@@ -259,6 +289,40 @@ class Pipeline {
     }
 
 
+    static #resolveStages( { stages, skipScan } ) {
+        const provided = stages === undefined || stages === null ? {} : stages
+        const flag = ( key ) => provided[ key ] === undefined ? true : provided[ key ] === true
+
+        // skipScan is the single scan switch: skipScan:true forces the scan stage off,
+        // otherwise the explicit stages.scan toggle (default on) decides.
+        const scan = skipScan === true ? false : flag( 'scan' )
+
+        return {
+            scan,
+            skills: flag( 'skills' ),
+            prefill: flag( 'prefill' ),
+            resources: flag( 'resources' ),
+            selections: flag( 'selections' )
+        }
+    }
+
+
+    static #createHandlers( { handlersFn, sharedLists, libraries, routeNames, resources, strict } ) {
+        try {
+            const { handlerMap, resourceHandlerMap } = HandlerFactory
+                .create( { handlersFn, sharedLists, libraries, routeNames, resources } )
+
+            return { handlerMap, resourceHandlerMap }
+        } catch( err ) {
+            if( strict ) {
+                throw new Error( `HND-001: ${err.message}` )
+            }
+
+            throw err
+        }
+    }
+
+
     static async executeResource( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } ) {
         const { struct } = await ResourceExecutor
             .execute( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } )
@@ -267,7 +331,7 @@ class Pipeline {
     }
 
 
-    static async #loadSharedLists( { main, listsDir, warnings } ) {
+    static async #loadSharedLists( { main, listsDir, warnings, strict } ) {
         const sharedListRefs = main[ 'sharedLists' ]
 
         if( sharedListRefs !== undefined && sharedListRefs !== null && !Array.isArray( sharedListRefs ) ) {
@@ -281,18 +345,30 @@ class Pipeline {
         }
 
         if( !listsDir ) {
+            if( strict ) {
+                throw new Error( 'LST-001: Schema declares sharedLists but no listsDir was provided' )
+            }
+
             warnings.push( 'PIPE-WARN: Schema declares sharedLists but no listsDir was provided — lists will NOT be loaded' )
             return {}
         }
 
-        const resolved = await SharedListResolver
-            .resolve( { sharedListRefs: effectiveRefs, listsDir } )
+        try {
+            const resolved = await SharedListResolver
+                .resolve( { sharedListRefs: effectiveRefs, listsDir } )
 
-        return resolved[ 'sharedLists' ]
+            return resolved[ 'sharedLists' ]
+        } catch( err ) {
+            if( strict ) {
+                throw new Error( `LST-001: Unresolvable sharedLists reference — ${err.message}` )
+            }
+
+            throw err
+        }
     }
 
 
-    static async #loadLibraries( { main, allowlist, resolveBase, warnings } ) {
+    static async #loadLibraries( { main, allowlist, resolveBase, resolveBases, injectedLibraries, strict } ) {
         const rawRequired = main[ 'requiredLibraries' ]
         const effectiveRequired = Array.isArray( rawRequired ) ? rawRequired : []
 
@@ -300,14 +376,26 @@ class Pipeline {
             return {}
         }
 
-        if( !allowlist ) {
-            warnings.push( 'PIPE-WARN: Schema declares requiredLibraries but no allowlist was provided — using default allowlist' )
+        // Injected, pre-resolved libraries (B-08b) bypass resolution entirely.
+        if( injectedLibraries !== undefined && injectedLibraries !== null ) {
+            return injectedLibraries
         }
 
-        const loaded = await LibraryLoader
-            .load( { requiredLibraries: effectiveRequired, allowlist, resolveBase } )
+        // No-Silent-Default (F17=A): the silent allowlist-degradation PIPE-WARN is
+        // gone. An unresolvable required library fails loud (LIB-001 in strict mode,
+        // the raw LibraryLoader error otherwise).
+        try {
+            const loaded = await LibraryLoader
+                .load( { requiredLibraries: effectiveRequired, allowlist, resolveBase, resolveBases } )
 
-        return loaded[ 'libraries' ]
+            return loaded[ 'libraries' ]
+        } catch( err ) {
+            if( strict ) {
+                throw new Error( `LIB-001: ${err.message}` )
+            }
+
+            throw err
+        }
     }
 
 

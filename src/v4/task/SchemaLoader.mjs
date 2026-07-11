@@ -13,8 +13,11 @@ import { pathToFileURL } from 'node:url'
 
 
 class SchemaLoader {
-    static async load( { filePath } ) {
-        const fileUrl = pathToFileURL( filePath ).href
+    static async load( { filePath, bustCache = false } ) {
+        const baseUrl = pathToFileURL( filePath ).href
+        // bustCache: append a unique query so the ESM loader re-imports a changed
+        // module (schema development, grading re-runs). Default false = cached.
+        const fileUrl = bustCache ? `${baseUrl}?t=${Date.now()}-${Math.random()}` : baseUrl
         const module = await import( fileUrl )
         const main = module['main'] || null
         const handlersFn = module['handlers'] || null
