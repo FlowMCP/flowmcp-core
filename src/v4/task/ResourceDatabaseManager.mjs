@@ -10,13 +10,14 @@
  */
 
 import Database from 'better-sqlite3'
-import { existsSync } from 'node:fs'
+import { existsSync, copyFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 
 class ResourceDatabaseManager {
     static #connections = new Map()
+    static #backupCreated = new Set()
     static #basisFolder = 'flowmcp'
 
 
@@ -146,6 +147,23 @@ class ResourceDatabaseManager {
         const count = ResourceDatabaseManager.#connections.size
 
         return { count }
+    }
+
+
+    static createBackupIfNeeded( { databasePath } ) {
+        if( ResourceDatabaseManager.#backupCreated.has( databasePath ) ) {
+            return { created: false }
+        }
+
+        if( !existsSync( databasePath ) ) {
+            return { created: false }
+        }
+
+        const backupPath = `${databasePath}.bak`
+        copyFileSync( databasePath, backupPath )
+        ResourceDatabaseManager.#backupCreated.add( databasePath )
+
+        return { created: true }
     }
 
 

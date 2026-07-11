@@ -52,16 +52,14 @@ describe( 'Pipeline v3 integration', () => {
 
 
     describe( 'v2 backward compatibility', () => {
-        test( 'loads a v2 schema with routes key and produces deprecation warning', async () => {
+        // Memo 152 / PRD-006 (G-03, F10=A): the routes->tools alias is gone.
+        // A routes-key schema is NOT aliased and emits no deprecation warning.
+        test( 'does not alias a routes-key schema (no deprecation warning)', async () => {
             const filePath = join( schemasDir, 'valid-minimal.mjs' )
             const result = await Pipeline
                 .load( { filePath, listsDir, allowlist: null } )
 
-            expect( result['status'] ).toBe( true )
-            expect( result['main']['namespace'] ).toBe( 'testminimal' )
-            expect( result['main']['version'] ).toBe( '2.0.0' )
-            expect( result['main']['tools'] ).toBeDefined()
-            expect( result['handlerMap']['getStatus'] ).toBeDefined()
+            expect( result['main']['tools'] ).toBeUndefined()
 
             const hasDeprecationWarning = result['warnings']
                 .some( ( w ) => {
@@ -70,7 +68,7 @@ describe( 'Pipeline v3 integration', () => {
                     return match
                 } )
 
-            expect( hasDeprecationWarning ).toBe( true )
+            expect( hasDeprecationWarning ).toBe( false )
         } )
 
 
@@ -210,8 +208,10 @@ describe( 'Pipeline v3 integration', () => {
     } )
 
 
-    describe( 'ambiguous schema rejection', () => {
-        test( 'rejects schema with both tools and routes keys', async () => {
+    describe( 'both tools and routes', () => {
+        // Memo 152 / PRD-006 (G-03, F10=A): no ambiguity message — routes is
+        // simply ignored, tools is the only accepted key.
+        test( 'ignores routes when tools is present (no ambiguity message)', async () => {
             const filePath = join( schemasDir, 'valid-v3-tools-and-routes.mjs' )
             const result = await Pipeline
                 .load( { filePath, listsDir, allowlist: null } )
@@ -223,7 +223,7 @@ describe( 'Pipeline v3 integration', () => {
                     return match
                 } )
 
-            expect( hasAmbiguousWarning ).toBe( true )
+            expect( hasAmbiguousWarning ).toBe( false )
         } )
     } )
 } )

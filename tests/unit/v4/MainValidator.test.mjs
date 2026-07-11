@@ -370,7 +370,7 @@ describe( 'v4 MainValidator', () => {
             expect( messages.some( ( m ) => m.includes( 'Must be one of' ) ) ).toBe( true )
         } )
 
-        it( 'accepts routes key as alias for tools', () => {
+        it( 'rejects routes key fail-loud (Memo 152 / PRD-006, G-03 — no v2 alias)', () => {
             const main = {
                 namespace: 'etherscan-io',
                 name: 'contracts',
@@ -379,8 +379,9 @@ describe( 'v4 MainValidator', () => {
                 root: 'https://api.etherscan.io',
                 routes: { getAbi: buildTool() }
             }
-            const { status } = MainValidator.validate( { main } )
-            expect( status ).toBe( true )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'main.routes' ) ) ).toBe( true )
         } )
 
         it( 'emits TST001 warning for low test count', () => {

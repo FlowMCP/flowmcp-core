@@ -17,7 +17,6 @@ const ALLOWED_MAIN_KEYS = [
     'schemaVersion',
     'root',
     'tools',
-    'routes',
     'resources',
     'docs',
     'tags',
@@ -141,9 +140,8 @@ class MainValidator {
 
     static #validateTopLevel( { main, messages, warnings } ) {
         const hasTools = main[ 'tools' ] !== undefined && main[ 'tools' ] !== null
-        const hasRoutes = main[ 'routes' ] !== undefined && main[ 'routes' ] !== null
         const hasResources = main[ 'resources' ] !== undefined && main[ 'resources' ] !== null
-        const toolsKey = hasTools ? 'tools' : 'routes'
+        const toolsKey = 'tools'
 
         const requiredFields = [
             [ 'namespace', 'string' ],
@@ -162,7 +160,7 @@ class MainValidator {
                 }
             } )
 
-        if( !hasTools && !hasRoutes ) {
+        if( !hasTools ) {
             if( !hasResources ) {
                 messages.push( 'main.tools: Missing required field — at least one primitive (tools or resources) is required' )
             }
@@ -195,7 +193,7 @@ class MainValidator {
             messages.push( 'main.root: Must not end with trailing slash' )
         }
 
-        if( hasTools || hasRoutes ) {
+        if( hasTools ) {
             const toolNames = Object.keys( main[ toolsKey ] )
             if( toolNames.length > 8 ) {
                 messages.push( `main.${toolsKey}: Maximum 8 tools allowed, got ${toolNames.length}` )
@@ -239,10 +237,7 @@ class MainValidator {
 
 
     static #validateTools( { main, messages, warnings } ) {
-        const hasTools = main[ 'tools' ] !== undefined
-        const hasRoutes = main[ 'routes' ] !== undefined
-        const toolsKey = hasTools ? 'tools' : 'routes'
-        const toolsObj = main[ toolsKey ]
+        const toolsObj = main[ 'tools' ]
 
         if( !toolsObj || typeof toolsObj !== 'object' ) {
             return
@@ -254,7 +249,7 @@ class MainValidator {
         toolNames
             .forEach( ( toolName ) => {
                 const tool = toolsObj[ toolName ]
-                const prefix = `main.${toolsKey}.${toolName}`
+                const prefix = `main.tools.${toolName}`
 
                 MainValidator.#validateStrictKeys( {
                     container: tool,

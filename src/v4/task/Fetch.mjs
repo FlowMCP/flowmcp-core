@@ -22,7 +22,7 @@ class Fetch {
             dataAsString: null
         }
 
-        const routesObj = main['tools'] || main['routes'] || {}
+        const routesObj = main['tools'] || {}
         const route = routesObj[ routeName ]
         if( !route ) {
             struct['status'] = false

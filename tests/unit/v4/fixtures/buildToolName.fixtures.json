@@ -1,0 +1,16 @@
+{
+  "_provenance": "Frozen from flowmcp-cli FlowMcpCli.__testOnly_buildToolName (Memo 152 / PRD-006 A-05, PRD-008 B-02). Tool names are a wire contract — core buildToolName MUST stay byte-identical to this CLI reference.",
+  "cases": [
+    { "input": { "routeName": "ping", "namespace": "demo" }, "expected": "ping_demo" },
+    { "input": { "routeName": "geoStation", "namespace": "geo" }, "expected": "geo_station_geo" },
+    { "input": { "routeName": "getBlockNumber", "namespace": "ethers" }, "expected": "get_block_number_ethers" },
+    { "input": { "routeName": "get:balance/of", "namespace": "my-ns" }, "expected": "getbalance_of_my_ns" },
+    { "input": { "routeName": "a", "namespace": "x" }, "expected": "a_x" },
+    { "input": { "routeName": "thisIsAVeryLongRouteNameThatExceeds", "namespace": "andAlsoAVeryLongNamespaceForCapTest" }, "expected": "this_is_avery_long_route_name_that_exceeds_and_also_avery_long_" },
+    { "input": { "routeName": "geoStation", "namespace": "geo", "source": "berlin", "disambiguate": true }, "expected": "geo_station_geo_berlin" },
+    { "input": { "routeName": "geoStation", "namespace": "geo", "source": "berlin", "disambiguate": false }, "expected": "geo_station_geo" },
+    { "input": { "routeName": "geoStation", "namespace": "geo", "source": "my-folder:sub", "disambiguate": true }, "expected": "geo_station_geo_my_foldersub" },
+    { "input": { "routeName": "thisIsAVeryLongRouteNameThatExceedsLimit", "namespace": "veryLongNamespaceHere", "source": "anExtraordinarilyLongSourceFolderNameForSuffixCap", "disambiguate": true }, "expected": "this__an_extraordinarily_long_source_folder_name_for_suffix_cap" },
+    { "input": { "routeName": "get_data", "namespace": "ns", "source": "src", "disambiguate": true }, "expected": "get_data_ns_src" }
+  ]
+}

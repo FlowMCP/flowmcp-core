@@ -34,13 +34,13 @@ class SchemaLoader {
         }
 
         const { messages, detectedVersion } = SchemaLoader
-            .#resolveToolsAlias( { main } )
+            .#detectShape( { main } )
 
         return { main, handlersFn, schema, hasHandlers, module, messages, detectedVersion }
     }
 
 
-    static #resolveToolsAlias( { main } ) {
+    static #detectShape( { main } ) {
         const messages = []
         let detectedVersion = 'unknown'
 
@@ -48,27 +48,13 @@ class SchemaLoader {
             return { messages, detectedVersion }
         }
 
+        // v4-only: the routes->tools auto-alias is gone (Memo 152 / PRD-006, G-03).
+        // A top-level `routes` key is no longer accepted here — MainValidator
+        // rejects it fail-loud (VAL003 unknown field + missing tools).
         const hasTools = main[ 'tools' ] !== undefined
-        const hasRoutes = main[ 'routes' ] !== undefined
-
-        if( hasTools && hasRoutes ) {
-            messages.push( 'main: Schema has both "tools" and "routes" — ambiguous, remove one' )
-
-            return { messages, detectedVersion }
-        }
 
         if( hasTools ) {
-            detectedVersion = 'v3'
-
-            return { messages, detectedVersion }
-        }
-
-        if( hasRoutes ) {
-            main[ 'tools' ] = main[ 'routes' ]
-            detectedVersion = 'v2'
-            messages.push( 'main.routes: Deprecated — use "tools" instead (auto-aliased)' )
-
-            return { messages, detectedVersion }
+            detectedVersion = 'v4'
         }
 
         return { messages, detectedVersion }

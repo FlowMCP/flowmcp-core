@@ -16,7 +16,7 @@ const minimalMain = {
     version: '2.0.0',
     root: 'https://api.example.com',
     headers: { 'Accept': 'application/json' },
-    routes: {
+    tools: {
         getStatus: {
             method: 'GET',
             path: '/status',

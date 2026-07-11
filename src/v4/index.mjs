@@ -29,5 +29,20 @@ export { IdResolver } from './task/IdResolver.mjs'
 // Phase 4 — Resource handling
 export { ResourceDatabaseManager } from './task/ResourceDatabaseManager.mjs'
 
-// LibraryLoader is re-exported from v2 (allowlist fix + mergeAllowlist live there)
-export { LibraryLoader } from '../v2/task/LibraryLoader.mjs'
+// Memo 152 / PRD-006 — modules moved from the v2 tree into the v4-only core
+export { SecurityScanner } from './task/SecurityScanner.mjs'
+export { SchemaLoader } from './task/SchemaLoader.mjs'
+export { SharedListResolver } from './task/SharedListResolver.mjs'
+export { LibraryLoader } from './task/LibraryLoader.mjs'
+export { HandlerFactory } from './task/HandlerFactory.mjs'
+export { SkillLoader } from './task/SkillLoader.mjs'
+export { ResourceValidator } from './task/ResourceValidator.mjs'
+export { ResourceExecutor } from './task/ResourceExecutor.mjs'
+export { ResourceMarkdownLoader } from './task/ResourceMarkdownLoader.mjs'
+export { PromptValidator } from './task/PromptValidator.mjs'
+export { PromptLoader } from './task/PromptLoader.mjs'
+export { Fetch } from './task/Fetch.mjs'
+export { ZodBuilder } from './task/ZodBuilder.mjs'
+
+// Memo 152 / PRD-006 — v4-only FlowMCP facade (replaces the v2 facade)
+export { FlowMCP } from './FlowMCP.mjs'

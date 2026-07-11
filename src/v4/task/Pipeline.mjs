@@ -9,24 +9,24 @@
  * For more information, see LICENSE.md and DISCLAIMER.md in the repo root.
  */
 
-import { SecurityScanner } from '../../v2/task/SecurityScanner.mjs'
-import { SchemaLoader } from '../../v2/task/SchemaLoader.mjs'
-import { LegacyAdapter } from '../../v2/task/LegacyAdapter.mjs'
+import { SecurityScanner } from './SecurityScanner.mjs'
+import { SchemaLoader } from './SchemaLoader.mjs'
 import { MainValidator } from './MainValidator.mjs'
-import { SharedListResolver } from '../../v2/task/SharedListResolver.mjs'
-import { LibraryLoader } from '../../v2/task/LibraryLoader.mjs'
+import { SharedListResolver } from './SharedListResolver.mjs'
+import { LibraryLoader } from './LibraryLoader.mjs'
 import { SelectionLoader } from './SelectionLoader.mjs'
 import { SelectionValidator } from './SelectionValidator.mjs'
-import { HandlerFactory } from '../../v2/task/HandlerFactory.mjs'
-import { SkillLoader } from '../../v2/task/SkillLoader.mjs'
+import { HandlerFactory } from './HandlerFactory.mjs'
+import { SkillLoader } from './SkillLoader.mjs'
 import { SkillValidator } from './SkillValidator.mjs'
 import { SkillContentGenerator } from './SkillContentGenerator.mjs'
 import { PrefillExecutor } from './PrefillExecutor.mjs'
 import { PlaceholderResolver } from './PlaceholderResolver.mjs'
-import { ResourceValidator } from '../../v2/task/ResourceValidator.mjs'
+import { ResourceValidator } from './ResourceValidator.mjs'
 import { ResourceDatabaseManager } from './ResourceDatabaseManager.mjs'
-import { PromptValidator } from '../../v2/task/PromptValidator.mjs'
-import { PromptLoader } from '../../v2/task/PromptLoader.mjs'
+import { PromptValidator } from './PromptValidator.mjs'
+import { PromptLoader } from './PromptLoader.mjs'
+import { ResourceExecutor } from './ResourceExecutor.mjs'
 
 import { dirname } from 'node:path'
 
@@ -65,24 +65,9 @@ class Pipeline {
                 .forEach( ( msg ) => { warnings.push( msg ) } )
         }
 
-        // Schritt 3: LegacyAdapter
-        const { isLegacy } = LegacyAdapter
-            .detect( { module: loaded } )
-
-        let main = null
-        let handlersFn = null
-
-        if( isLegacy ) {
-            const adapted = LegacyAdapter
-                .adapt( { legacySchema: loaded[ 'schema' ] } )
-            main = adapted[ 'main' ]
-            handlersFn = adapted[ 'handlersFn' ]
-            adapted[ 'warnings' ]
-                .forEach( ( w ) => { warnings.push( w ) } )
-        } else {
-            main = loaded[ 'main' ]
-            handlersFn = loaded[ 'handlersFn' ]
-        }
+        // Schritt 3: extract main + handlers (v4-only — no legacy shape adaptation)
+        const main = loaded[ 'main' ]
+        const handlersFn = loaded[ 'handlersFn' ]
 
         // Schritt 4: MainValidator v4
         const { status: validStatus, messages: validMessages, warnings: validWarnings } = MainValidator
@@ -270,6 +255,14 @@ class Pipeline {
             prefillResults,
             warnings
         } )
+    }
+
+
+    static async executeResource( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } ) {
+        const { struct } = await ResourceExecutor
+            .execute( { resourceDefinition, resourceName, queryName, userParams, handlerMap, schemaRef } )
+
+        return { struct }
     }
 
 

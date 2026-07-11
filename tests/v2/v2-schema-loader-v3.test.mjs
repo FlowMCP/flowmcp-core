@@ -8,9 +8,13 @@ const __dirname = dirname( __filename )
 const fixturesDir = join( __dirname, 'fixtures', 'schemas' )
 
 
-describe( 'SchemaLoader v3 — routes/tools alias', () => {
-    describe( 'v3 native (tools key)', () => {
-        test( 'loads schema with tools key and detects v3', async () => {
+// Memo 152 / PRD-006 (G-03, F10=A): the routes->tools auto-alias is removed.
+// SchemaLoader is v4-only — a `routes` key is no longer aliased; MainValidator
+// rejects it fail-loud downstream. These formerly-positive alias tests are now
+// negative: routes stays untouched, `tools` is the only accepted key.
+describe( 'SchemaLoader v4 — no routes alias (Memo 152)', () => {
+    describe( 'v4 native (tools key)', () => {
+        test( 'loads schema with tools key and detects v4', async () => {
             const filePath = join( fixturesDir, 'valid-v3-tools.mjs' )
             const { main, messages, detectedVersion } = await SchemaLoader
                 .load( { filePath } )
@@ -18,49 +22,35 @@ describe( 'SchemaLoader v3 — routes/tools alias', () => {
             expect( main ).not.toBeNull()
             expect( main[ 'tools' ] ).toBeDefined()
             expect( main[ 'namespace' ] ).toBe( 'testtools' )
-            expect( detectedVersion ).toBe( 'v3' )
+            expect( detectedVersion ).toBe( 'v4' )
             expect( messages ).toEqual( [] )
         } )
     } )
 
 
-    describe( 'v2 backward compat (routes key)', () => {
-        test( 'loads schema with routes key, aliases to tools, and detects v2', async () => {
+    describe( 'routes key is NOT aliased', () => {
+        test( 'loads schema with routes key without aliasing to tools', async () => {
             const filePath = join( fixturesDir, 'valid-minimal.mjs' )
             const { main, messages, detectedVersion } = await SchemaLoader
                 .load( { filePath } )
 
             expect( main ).not.toBeNull()
-            expect( main[ 'tools' ] ).toBeDefined()
-            expect( main[ 'tools' ][ 'getStatus' ] ).toBeDefined()
-            expect( detectedVersion ).toBe( 'v2' )
-
-            const hasDeprecationWarning = messages
-                .some( ( msg ) => {
-                    const match = msg.includes( 'Deprecated' ) && msg.includes( 'routes' )
-
-                    return match
-                } )
-
-            expect( hasDeprecationWarning ).toBe( true )
+            expect( main[ 'tools' ] ).toBeUndefined()
+            expect( detectedVersion ).toBe( 'unknown' )
+            expect( messages ).toEqual( [] )
         } )
     } )
 
 
-    describe( 'ambiguous (both tools and routes)', () => {
-        test( 'returns error when schema has both tools and routes', async () => {
+    describe( 'both tools and routes', () => {
+        test( 'keeps tools, ignores routes, no ambiguity message', async () => {
             const filePath = join( fixturesDir, 'valid-v3-tools-and-routes.mjs' )
-            const { messages } = await SchemaLoader
+            const { main, messages, detectedVersion } = await SchemaLoader
                 .load( { filePath } )
 
-            const hasAmbiguousError = messages
-                .some( ( msg ) => {
-                    const match = msg.includes( 'ambiguous' ) && msg.includes( 'tools' ) && msg.includes( 'routes' )
-
-                    return match
-                } )
-
-            expect( hasAmbiguousError ).toBe( true )
+            expect( main[ 'tools' ] ).toBeDefined()
+            expect( detectedVersion ).toBe( 'v4' )
+            expect( messages ).toEqual( [] )
         } )
     } )
 
