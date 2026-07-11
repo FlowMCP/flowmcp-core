@@ -1,13 +1,11 @@
 {
   "name": "flowmcp-core",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "FlowMCP is a framework for adapting existing web APIs into a standardized Model Context Protocol (MCP) interface, enabling structured, testable, and semantically consistent access for AI systems.",
   "main": "./src/index.mjs",
+  "//exports": "Memo 152 / PRD-009 — v4-only. './v4' is a TRANSITIONAL alias kept for ONE release so pinned consumers keep resolving; remove it after they switch to '.'. The './v1', './v2', './legacy' subpaths were removed (BREAKING major).",
   "exports": {
     ".": "./src/index.mjs",
-    "./legacy": "./src/legacy/index.mjs",
-    "./v1": "./src/v1/index.mjs",
-    "./v2": "./src/v2/index.mjs",
     "./v4": "./src/v4/index.mjs"
   },
   "directories": {
