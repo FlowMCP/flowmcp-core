@@ -12,7 +12,7 @@ import { ResourceDatabaseManager } from '../../../src/v4/task/ResourceDatabaseMa
 const __filename = fileURLToPath( import.meta.url )
 const __dirname = dirname( __filename )
 const schemasDir = join( __dirname, 'fixtures', 'pipeline', 'schemas' )
-const fallbackBase = join( __dirname, '..', '..', 'v2', 'fixtures', 'loader-fallback' )
+const fallbackBase = join( __dirname, 'fixtures', 'loader-fallback' )
 
 
 describe( 'Pipeline.load options (Memo 152 / PRD-008, B-08)', () => {

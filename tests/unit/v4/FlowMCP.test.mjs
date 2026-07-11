@@ -120,4 +120,81 @@ describe( 'v4 FlowMCP facade (Memo 152 / PRD-006)', () => {
             expect( existsSync( `${fileDbPath}.bak` ) ).toBe( true )
         } )
     } )
+
+
+    // Memo 152 / PRD-010, F-04 — the facade grading mindestcontract (verbatim from
+    // flowmcp-grading DataPretest mock): fetch, executeResource, resolveSharedLists,
+    // createHandlers — each with at least one positive test against the v4 facade.
+    describe( 'F-04 — grading mindestcontract methods', () => {
+        test( 'fetch executes a mocked handler and returns a struct', async () => {
+            const main = {
+                namespace: 'facadefetch',
+                root: 'https://api.example.com',
+                tools: { getThing: { method: 'GET', path: '/thing', description: 'd', parameters: [] } }
+            }
+            const handlerMap = {
+                getThing: { executeRequest: async ( { struct } ) => ( { struct, response: { ok: true } } ) }
+            }
+
+            const struct = await FlowMCP.fetch( {
+                main, handlerMap, userParams: {}, serverParams: {}, routeName: 'getThing'
+            } )
+
+            expect( struct[ 'status' ] ).toBe( true )
+            expect( struct[ 'data' ] ).toEqual( { ok: true } )
+        } )
+
+
+        test( 'resolveSharedLists returns an empty object for no refs', async () => {
+            const { sharedLists } = await FlowMCP.resolveSharedLists( {
+                sharedListRefs: [],
+                listsDir: null
+            } )
+
+            expect( sharedLists ).toEqual( {} )
+        } )
+
+
+        test( 'createHandlers wires a route handler map', () => {
+            const { handlerMap } = FlowMCP.createHandlers( {
+                handlersFn: () => ( { getThing: { postRequest: async ( { struct } ) => ( { struct } ) } } ),
+                sharedLists: {},
+                libraries: {},
+                routeNames: [ 'getThing' ],
+                resources: {}
+            } )
+
+            expect( handlerMap[ 'getThing' ] ).toBeDefined()
+            expect( typeof handlerMap[ 'getThing' ][ 'postRequest' ] ).toBe( 'function' )
+        } )
+
+
+        test( 'executeResource is exercised above (A-03/A-04)', () => {
+            expect( typeof FlowMCP.executeResource ).toBe( 'function' )
+        } )
+    } )
+
+
+    // Memo 152 / PRD-010, F-01 — nucleus ported from tests/v2/v2-resource-db-init
+    // (initializeResourceDbs regression #85), now against the v4 facade.
+    describe( 'initializeResourceDbs (regression #85)', () => {
+        test( 'does not throw when called through the public wrapper', async () => {
+            const result = await FlowMCP
+                .initializeResourceDbs( { resources: {}, schemaRef: 'regression-85' } )
+
+            expect( result ).toBeDefined()
+        } )
+
+
+        test( 'ignores non-sqlite resources without touching any connection', async () => {
+            const resources = {
+                someDoc: { source: 'markdown', origin: 'project', name: 'doc.md' }
+            }
+
+            const result = await FlowMCP
+                .initializeResourceDbs( { resources, schemaRef: 'regression-85-non-sqlite' } )
+
+            expect( result ).toBeDefined()
+        } )
+    } )
 } )

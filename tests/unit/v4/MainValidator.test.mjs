@@ -619,4 +619,125 @@ describe( 'v4 MainValidator', () => {
             expect( messages.some( ( m ) => m.includes( 'sharedLists' ) ) ).toBe( true )
         } )
     } )
+
+
+    // Memo 152 / PRD-010, F-02 diff-check — output/preload coverage ported from the
+    // superseded tests/v2/v2-main-validator suite (v4 MainValidator keeps the
+    // #validateOutput / #validatePreload logic but the v4 suite lacked coverage).
+    describe( 'output validation (ported from v2)', () => {
+        it( 'rejects an unsupported output mimeType', () => {
+            const tool = buildTool( { output: { mimeType: 'text/html', schema: { type: 'string' } } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'output.mimeType' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when output schema is missing', () => {
+            const tool = buildTool( { output: { mimeType: 'application/json' } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'output.schema' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when output schema type is missing', () => {
+            const tool = buildTool( { output: { mimeType: 'application/json', schema: {} } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'output.schema.type' ) ) ).toBe( true )
+        } )
+
+        it( 'passes valid image/png output with base64 format', () => {
+            const tool = buildTool( { output: { mimeType: 'image/png', schema: { type: 'string', format: 'base64' } } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+        } )
+
+        it( 'passes valid text/plain output', () => {
+            const tool = buildTool( { output: { mimeType: 'text/plain', schema: { type: 'string' } } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+        } )
+
+        it( 'passes when output is omitted from a tool', () => {
+            const main = buildValidMain( { tools: { getAbi: buildTool() } } )
+            const { status } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+        } )
+    } )
+
+
+    describe( 'preload validation (ported from v2)', () => {
+        it( 'passes a valid preload block', () => {
+            const tool = buildTool( { preload: { enabled: true, ttl: 60, description: 'warm cache' } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+        } )
+
+        it( 'passes preload without optional description', () => {
+            const tool = buildTool( { preload: { enabled: false, ttl: 30 } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+        } )
+
+        it( 'fails when preload.enabled is missing', () => {
+            const tool = buildTool( { preload: { ttl: 30 } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'preload.enabled' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when preload.enabled is not boolean', () => {
+            const tool = buildTool( { preload: { enabled: 'yes', ttl: 30 } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'preload.enabled' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when preload.ttl is missing', () => {
+            const tool = buildTool( { preload: { enabled: true } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'preload.ttl' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when preload.ttl is not a positive integer', () => {
+            const tool = buildTool( { preload: { enabled: true, ttl: -5 } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'preload.ttl' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when preload.description is not a string', () => {
+            const tool = buildTool( { preload: { enabled: true, ttl: 30, description: 123 } } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'preload.description' ) ) ).toBe( true )
+        } )
+
+        it( 'fails when preload is not a plain object', () => {
+            const tool = buildTool( { preload: [ 1, 2, 3 ] } )
+            const main = buildValidMain( { tools: { getAbi: tool } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'preload' ) ) ).toBe( true )
+        } )
+
+        it( 'passes when preload is omitted', () => {
+            const main = buildValidMain( { tools: { getAbi: buildTool() } } )
+            const { status } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+        } )
+    } )
 } )

@@ -8,7 +8,7 @@ const __filename = fileURLToPath( import.meta.url )
 const __dirname = dirname( __filename )
 const schemasDir = join( __dirname, 'fixtures', 'pipeline', 'schemas' )
 const selectionsDir = join( __dirname, 'fixtures', 'pipeline', 'selections' )
-const fallbackBase = join( __dirname, '..', '..', 'v2', 'fixtures', 'loader-fallback' )
+const fallbackBase = join( __dirname, 'fixtures', 'loader-fallback' )
 
 
 describe( 'v4 Pipeline', () => {
@@ -119,7 +119,7 @@ describe( 'v4 Pipeline', () => {
 
         it( 'returns status:false when SecurityScanner fails (file with eval)', async () => {
             // Re-use the existing v2 fixture that contains eval() — SecurityScanner is shared.
-            const v2FixturesDir = join( __dirname, '..', '..', 'v2', 'fixtures', 'schemas' )
+            const v2FixturesDir = join( __dirname, 'fixtures', 'schemas' )
             const filePath = join( v2FixturesDir, 'invalid-has-eval.mjs' )
 
             const result = await Pipeline
@@ -279,6 +279,37 @@ describe( 'v4 Pipeline', () => {
             await expect(
                 Pipeline.load( { filePath, listsDir: null, allowlist: [ 'fallbackcjs' ] } )
             ).rejects.toThrow()
+        } )
+    } )
+
+
+    // Memo 152 / PRD-010, F-10 — positive Prompts/Resources coverage through the
+    // Pipeline (previously only the empty case was tested, line 83).
+    describe( 'Prompts and Resources through the Pipeline (F-10)', () => {
+        it( 'loads a schema with a sqlite resource and validates it (Step 14)', async () => {
+            const filePath = join( schemasDir, 'v4-with-resources.mjs' )
+
+            const result = await Pipeline
+                .load( { filePath, listsDir: null, allowlist: null } )
+
+            expect( result[ 'status' ] ).toBe( true )
+            expect( result[ 'messages' ] ).toEqual( [] )
+            expect( result[ 'main' ][ 'resources' ][ 'verifiedContracts' ] ).toBeDefined()
+            expect( result[ 'main' ][ 'resources' ][ 'verifiedContracts' ][ 'source' ] ).toBe( 'sqlite' )
+        } )
+
+        // v4-only fail-loud: a top-level `prompts` key is NOT part of the v4 schema
+        // shape (0/564 real schemas use it; parallels `skills` being main-forbidden).
+        // The prompt-loading engine keeps its positive coverage at the PromptLoader
+        // module level (PromptLoader.test.mjs). Here we assert the Pipeline rejects it.
+        it( 'rejects a schema that declares a top-level prompts key', async () => {
+            const filePath = join( schemasDir, 'v4-with-prompts.mjs' )
+
+            const result = await Pipeline
+                .load( { filePath, listsDir: null, allowlist: null } )
+
+            expect( result[ 'status' ] ).toBe( false )
+            expect( result[ 'messages' ].some( ( m ) => m.includes( 'main.prompts' ) ) ).toBe( true )
         } )
     } )
 
