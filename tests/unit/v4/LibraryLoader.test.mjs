@@ -265,6 +265,102 @@ describe( 'LibraryLoader', () => {
             expect( message ).toContain( 'LIB-BINDING' )
             expect( message ).not.toContain( 'LIB-001' )
         } )
+
+
+        // Memo 152 / PRD-027 (doctor gap b) — the install command in the LIB-001 message uses the
+        // per-lib installTargets token (github:FlowMCP/<repo> for org-internal libs), never a bare
+        // npm name that would 404 for a lib that is not on the registry.
+        test( 'LIB-001 install command uses the installTargets token for an org-internal lib', async () => {
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'time-csv-toolkit' ],
+                    resolveBases: [ '/no/such/base' ],
+                    installHintBase: '/tmp/al',
+                    installTargets: { 'time-csv-toolkit': 'github:FlowMCP/time-csv-toolkit' }
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            expect( message ).toContain( 'time-csv-toolkit' )
+            expect( message ).toContain( 'npm install --prefix /tmp/al github:FlowMCP/time-csv-toolkit' )
+        } )
+
+
+        test( 'LIB-001 install command falls back to the bare name when no installTargets given', async () => {
+            let message = ''
+
+            try {
+                await LibraryLoader.resolveExternal( {
+                    requiredLibraries: [ 'some-npm-lib' ],
+                    resolveBases: [ '/no/such/base' ],
+                    installHintBase: '/tmp/al'
+                } )
+            } catch( err ) {
+                message = err.message
+            }
+
+            expect( message ).toContain( 'npm install --prefix /tmp/al some-npm-lib' )
+        } )
+    } )
+
+
+    // Memo 152 / PRD-027 (doctor gap a) — probe() is the non-throwing, real-load classifier that
+    // `flowmcp doctor` uses so module-present reflects runtime reality (loads, not just resolves).
+    describe( 'probe() — Memo 152 real-load classification (doctor gap a)', () => {
+        test( 'reports a genuinely missing library under notInstalled (never throws)', async () => {
+            const { ok, notInstalled, loadFailed } = await LibraryLoader.probe( {
+                requiredLibraries: [ 'flowmcp-nowhere-lib' ],
+                resolveBases: [ '/no/such/base' ]
+            } )
+
+            expect( ok ).toEqual( [] )
+            expect( notInstalled ).toEqual( [ 'flowmcp-nowhere-lib' ] )
+            expect( loadFailed ).toEqual( [] )
+        } )
+
+
+        test( 'reports an installed-but-unloadable native lib under loadFailed (dlopen truth)', async () => {
+            // broken-native-core-test RESOLVES (has a package.json) but THROWS at import — the
+            // canonical native-binding failure. `require.resolve` alone would call it green; probe
+            // does the real load, so it lands in loadFailed with the reason preserved.
+            const { ok, notInstalled, loadFailed } = await LibraryLoader.probe( {
+                requiredLibraries: [ 'broken-native-core-test' ],
+                resolveBases: [ bindingBase ]
+            } )
+
+            expect( ok ).toEqual( [] )
+            expect( notInstalled ).toEqual( [] )
+            expect( loadFailed.length ).toBe( 1 )
+            expect( loadFailed[ 0 ][ 'lib' ] ).toBe( 'broken-native-core-test' )
+            expect( typeof loadFailed[ 0 ][ 'reason' ] ).toBe( 'string' )
+        } )
+
+
+        test( 'reports a truly loadable library under ok', async () => {
+            const { ok, notInstalled, loadFailed } = await LibraryLoader.probe( {
+                requiredLibraries: [ 'fallbackcjs' ],
+                resolveBases: [ fallbackBase ]
+            } )
+
+            expect( ok ).toEqual( [ 'fallbackcjs' ] )
+            expect( notInstalled ).toEqual( [] )
+            expect( loadFailed ).toEqual( [] )
+        } )
+
+
+        test( 'returns empty buckets for an empty requiredLibraries list', async () => {
+            const { ok, notInstalled, loadFailed } = await LibraryLoader.probe( {
+                requiredLibraries: [],
+                resolveBases: [ fallbackBase ]
+            } )
+
+            expect( ok ).toEqual( [] )
+            expect( notInstalled ).toEqual( [] )
+            expect( loadFailed ).toEqual( [] )
+        } )
     } )
 
 

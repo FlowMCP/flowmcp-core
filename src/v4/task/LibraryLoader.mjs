@@ -154,7 +154,14 @@ class LibraryLoader {
     //                         (defaults to a noop so core does no I/O of its own; the CLI wires it
     //                         to CliOutput.emitCoded).
     // LIB-BINDING takes precedence over LIB-001 (a broken binding is reported before a missing one).
-    static async resolveExternal( { requiredLibraries, resolveBases, installHintBase, emit } ) {
+    //
+    // Memo 152 / PRD-027 (doctor gap b) — `installTargets` is an optional plain object mapping a
+    // library name to the exact token that follows `npm install --prefix <base>` for THAT lib.
+    // The CLI computes it (org-internal FlowMCP libs -> `github:FlowMCP/<repo>`, npm libs -> the
+    // bare name) and passes it in, so core stays env-free and does no name classification of its
+    // own. When a lib is absent from the map (or no map is given) the bare lib name is used — the
+    // pre-PRD-027 behavior, so existing callers/tests are unaffected.
+    static async resolveExternal( { requiredLibraries, resolveBases, installHintBase, emit, installTargets } ) {
         const effectiveRequired = Array.isArray( requiredLibraries ) ? requiredLibraries : []
 
         if( effectiveRequired.length === 0 ) {
@@ -197,10 +204,50 @@ class LibraryLoader {
                 ? installHintBase
                 : '<allowed-libraries>'
 
-            throw new Error( `LIB-001 required librar${notInstalled.length === 1 ? 'y' : 'ies'} not resolvable from allowed-libraries (${hintBase}), CLI base, nor schema dir: ${notInstalled.join( ', ' )}. Install into allowed-libraries: npm install --prefix ${hintBase} ${notInstalled.join( ' ' )}` )
+            const targets = installTargets !== undefined && installTargets !== null ? installTargets : {}
+            const installTokens = notInstalled
+                .map( ( lib ) => targets[ lib ] !== undefined && targets[ lib ] !== null ? targets[ lib ] : lib )
+
+            throw new Error( `LIB-001 required librar${notInstalled.length === 1 ? 'y' : 'ies'} not resolvable from allowed-libraries (${hintBase}), CLI base, nor schema dir: ${notInstalled.join( ', ' )}. Install into allowed-libraries: npm install --prefix ${hintBase} ${installTokens.join( ' ' )}` )
         }
 
         return { libraries }
+    }
+
+
+    // Memo 152 / PRD-027 (doctor gap a) — a NON-throwing sibling of resolveExternal that reports,
+    // per library, whether it truly loads. `flowmcp doctor`'s module-present check used to decide
+    // pass/fail purely via `require.resolve` (resolvable != loadable) — a native lib like talib
+    // whose package resolves but whose `.node` fails to dlopen reported green. probe() runs the SAME
+    // load path the runtime uses (#loadOneFromBases: require.resolve THEN a real import/require), so
+    // doctor reflects runtime reality: an installed-but-unloadable native binding lands in
+    // `loadFailed`, a genuinely missing lib in `notInstalled`. It never throws (doctor aggregates
+    // across many schemas) and never emits (offline check).
+    static async probe( { requiredLibraries, resolveBases } ) {
+        const effectiveRequired = Array.isArray( requiredLibraries ) ? requiredLibraries : []
+        const orderedBases = Array.isArray( resolveBases ) ? resolveBases : []
+        const requires = orderedBases
+            .map( ( base ) => createRequire( join( base, 'index.js' ) ) )
+
+        const ok = []
+        const notInstalled = []
+        const loadFailed = []
+
+        await effectiveRequired
+            .reduce( ( promise, lib ) => promise.then( async () => {
+                const loaded = await LibraryLoader
+                    .#loadOneFromBases( { lib, requires, emit: () => {} } )
+
+                if( loaded[ 'status' ] === true ) {
+                    ok.push( lib )
+                } else if( loaded[ 'loadError' ] !== null && loaded[ 'loadError' ] !== undefined ) {
+                    loadFailed.push( { lib, reason: loaded[ 'loadError' ] } )
+                } else {
+                    notInstalled.push( lib )
+                }
+            } ), Promise.resolve() )
+
+        return { ok, notInstalled, loadFailed }
     }
 
 
