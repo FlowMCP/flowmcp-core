@@ -78,7 +78,16 @@ class ZodBuilder {
 
 
     static #insertOptions( { _interface, options } ) {
-        const result = options
+        // Memo 152 / PRD-028 (A-15 serve smoke) — apply base-type CONSTRAINTS (min/max/length/regex)
+        // BEFORE the WRAPPERS (optional, then default), regardless of the order the schema declares
+        // them in. `.optional()` / `.default()` return ZodOptional / ZodDefault wrappers that do NOT
+        // expose `.min` / `.max` / `.length` / `.regex`, so applying a constraint after a wrapper
+        // throws "_interface.max is not a function" and the tool cannot register in `flowmcp run`.
+        // The schemas pervasively declare options as ['optional()','default(N)','min(0)','max(100)'];
+        // a stable priority sort turns that into z.number().min(0).max(100).optional().default(N) —
+        // the valid Zod chain — without changing already-valid orderings.
+        const ordered = ZodBuilder.#orderOptions( { options } )
+        const result = ordered
             .reduce( ( acc, option ) => {
                 const updated = ZodBuilder
                     .#insertOption( { '_interface': acc, option } )
@@ -87,6 +96,25 @@ class ZodBuilder {
             }, _interface )
 
         return result
+    }
+
+
+    static #orderOptions( { options } ) {
+        // Stable sort by wrapping priority: constraints (0) -> optional (1) -> default (2). A stable
+        // sort preserves declaration order within the same priority (e.g. min before max).
+        const priorityOf = ( option ) => {
+            if( option.startsWith( 'optional(' ) ) { return 1 }
+            if( option.startsWith( 'default(' ) ) { return 2 }
+
+            return 0
+        }
+
+        const ordered = options
+            .map( ( option, index ) => ( { option, index, priority: priorityOf( option ) } ) )
+            .sort( ( a, b ) => a.priority - b.priority || a.index - b.index )
+            .map( ( entry ) => entry[ 'option' ] )
+
+        return ordered
     }
 
 

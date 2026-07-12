@@ -228,4 +228,80 @@ describe( 'ZodBuilder.getZodSchema', () => {
         // Memo 152 / PRD-012 (B-03) — typed default: number() default(1) -> 1 (not '1').
         expect( parsed ).toBe( 1 )
     } )
+
+
+    // Memo 152 / PRD-028 (A-15 serve smoke) — the real schema corpus declares options in
+    // wrapper-first order ['optional()','default(N)','min(0)','max(100)']. Before the fix this
+    // threw "_interface.min is not a function" (min applied to a ZodOptional/ZodDefault wrapper)
+    // and 435/522 tools could not register in `flowmcp run`. The builder now applies constraints
+    // before wrappers regardless of declared order.
+    it( 'applies constraints before wrappers for wrapper-first option order (serve corpus shape)', () => {
+        const route = {
+            'method': 'GET',
+            'description': 'Test route',
+            'path': '/test',
+            'parameters': [
+                {
+                    'position': { 'key': 'maxResults', 'value': '{{USER_PARAM}}', 'location': 'query' },
+                    'z': { 'primitive': 'number()', 'options': [ 'optional()', 'default(10)', 'min(1)', 'max(100)' ] }
+                }
+            ],
+            'tests': []
+        }
+
+        // Must NOT throw (the 435-tools serve regression).
+        const zodSchema = ZodBuilder.getZodSchema( { route } )
+
+        expect( zodSchema ).toHaveProperty( 'maxResults' )
+        // Typed default survives the reorder (B-12): number default is a real number.
+        expect( zodSchema[ 'maxResults' ].parse( undefined ) ).toBe( 10 )
+        // The constraints actually apply (they reached the base number type, not a wrapper).
+        expect( zodSchema[ 'maxResults' ].safeParse( 50 )[ 'success' ] ).toBe( true )
+        expect( zodSchema[ 'maxResults' ].safeParse( 0 )[ 'success' ] ).toBe( false )
+        expect( zodSchema[ 'maxResults' ].safeParse( 200 )[ 'success' ] ).toBe( false )
+    } )
+
+
+    it( 'keeps a typed boolean default through a wrapper-first order (B-12)', () => {
+        const route = {
+            'method': 'GET',
+            'description': 'Test route',
+            'path': '/test',
+            'parameters': [
+                {
+                    'position': { 'key': 'verbose', 'value': '{{USER_PARAM}}', 'location': 'query' },
+                    'z': { 'primitive': 'boolean()', 'options': [ 'optional()', 'default(true)' ] }
+                }
+            ],
+            'tests': []
+        }
+
+        const zodSchema = ZodBuilder.getZodSchema( { route } )
+
+        expect( zodSchema ).toHaveProperty( 'verbose' )
+        // Typed boolean default: default(true) -> real boolean true (not the string 'true').
+        expect( zodSchema[ 'verbose' ].parse( undefined ) ).toBe( true )
+    } )
+
+
+    it( 'leaves an already-valid constraint-first order unchanged', () => {
+        const route = {
+            'method': 'GET',
+            'description': 'Test route',
+            'path': '/test',
+            'parameters': [
+                {
+                    'position': { 'key': 'page', 'value': '{{USER_PARAM}}', 'location': 'query' },
+                    'z': { 'primitive': 'number()', 'options': [ 'min(1)', 'max(100)' ] }
+                }
+            ],
+            'tests': []
+        }
+
+        const zodSchema = ZodBuilder.getZodSchema( { route } )
+
+        expect( zodSchema[ 'page' ].safeParse( 50 )[ 'success' ] ).toBe( true )
+        expect( zodSchema[ 'page' ].safeParse( 0 )[ 'success' ] ).toBe( false )
+        expect( zodSchema[ 'page' ].safeParse( 101 )[ 'success' ] ).toBe( false )
+    } )
 } )
