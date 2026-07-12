@@ -17,8 +17,6 @@ import { SharedListResolver } from './task/SharedListResolver.mjs'
 import { LibraryLoader } from './task/LibraryLoader.mjs'
 import { HandlerFactory } from './task/HandlerFactory.mjs'
 import { ResourceDatabaseManager } from './task/ResourceDatabaseManager.mjs'
-import { OutputSchemaGenerator } from './task/OutputSchemaGenerator.mjs'
-import { AgentManifestValidator } from './task/AgentManifestValidator.mjs'
 import { IdResolver } from './task/IdResolver.mjs'
 import { ZodBuilder } from './task/ZodBuilder.mjs'
 
@@ -109,22 +107,6 @@ class FlowMCP {
             .initialize( { resources, schemaRef, schemaDir } )
 
         return result
-    }
-
-
-    static generateOutputSchema( { response, mimeType, schemaId } ) {
-        const result = OutputSchemaGenerator
-            .generateFromResponse( { response, mimeType, schemaId } )
-
-        return result
-    }
-
-
-    static validateAgentManifest( { manifest } ) {
-        const { status, messages } = AgentManifestValidator
-            .validate( { manifest } )
-
-        return { status, messages }
     }
 
 

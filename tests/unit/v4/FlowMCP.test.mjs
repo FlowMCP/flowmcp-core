@@ -43,7 +43,7 @@ describe( 'v4 FlowMCP facade (Memo 152 / PRD-006)', () => {
             'loadSchema', 'fetch', 'executeResource', 'resolveSharedLists',
             'interpolateEnum', 'createHandlers', 'initializeResourceDbs',
             'validateMain', 'scanSecurity', 'prepareServerTool',
-            'generateOutputSchema', 'buildToolName'
+            'buildToolName'
         ]
 
         members
