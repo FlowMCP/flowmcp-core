@@ -2,7 +2,7 @@
 
 # FlowMCP Core
 
-**Version:** 3.0.0
+**Version:** 4.0.0
 
 A comprehensive framework for adapting existing web APIs into a standardized Model Context Protocol (MCP) interface, enabling structured, testable, and semantically consistent access for AI systems. FlowMCP Core transforms any REST API into MCP-compatible tools with built-in validation, testing, and error handling.
 
@@ -19,7 +19,7 @@ A comprehensive framework for adapting existing web APIs into a standardized Mod
 - **Library Loading**: Allowlisted runtime library injection through `LibraryLoader` (with `mergeAllowlist`)
 - **Resource Database Manager**: SQLite-backed resource initialisation via `ResourceDatabaseManager`
 - **Security Scanner**: Static scan for forbidden patterns (eval, imports) before any module is loaded
-- **Legacy Compatibility**: v1 and v2 APIs remain available under `flowmcp-core/legacy`, `flowmcp-core/v1`, `flowmcp-core/v2`
+- **v4-only (4.0.0)**: The v1/v2/legacy trees were removed — the root export and every module are v4. See [Breaking change: v4-only (4.0.0)](#breaking-change-v4-only-400)
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ A comprehensive framework for adapting existing web APIs into a standardized Mod
   - [Quick Start (v4)](#quick-start-v4)
   - [v4 Public API](#v4-public-api)
   - [v4 Schema Structure](#v4-schema-structure)
-  - [Legacy API (v1 / v2)](#legacy-api-v1--v2)
+  - [Breaking change: v4-only (4.0.0)](#breaking-change-v4-only-400)
   - [Error Handling](#error-handling)
   - [Testing & Validation](#testing--validation)
   - [Performance & Optimization](#performance--optimization)
@@ -215,17 +215,16 @@ export const skills = {
 }
 ```
 
-## Legacy API (v1 / v2)
+## Breaking change: v4-only (4.0.0)
 
-The v1 and v2 APIs remain available for existing consumers:
+**4.0.0 removes the v1, v2, and legacy trees.** The package is now v4-only:
 
-```js
-import { FlowMCP } from 'flowmcp-core/v2'    // v2 API
-import { FlowMCP } from 'flowmcp-core/v1'    // v1 API (legacy)
-import { FlowMCP } from 'flowmcp-core/legacy' // v1 API (legacy alias)
-```
+- The `exports` map carries just two entries — `.` (the v4 surface, incl. the `FlowMCP` facade) and `./v4` (an alias kept for **one** release, then removed). The `./v1`, `./v2`, and `./legacy` subpaths no longer exist.
+- Removed v1/v2 methods such as `.activateServerTools`, `.filterArrayOfSchemas`, `.getArgvParameters`, and `.prepareActivations` are gone from the public surface. Build MCP servers with `FlowMCP.loadSchema()` + `FlowMCP.prepareServerTool()` instead (see [Quick Start](#quick-start-v4) and the [Server Integration guide](https://flowmcp.github.io/guides/server-integration/)).
+- **SHA-pinned installs keep working.** Consumers that pin by commit hash (`github:FlowMCP/flowmcp-core#<sha>`) are unaffected — the old commits stay reachable in the Git history. Breakage only occurs on a pin bump, for docs readers, or for unpinned installs. Pin bumps must migrate to the v4 API.
+- Convert v1/v2/v3 schema files to v4 with the explicit `flowmcp migrate` converter. The v1 method-by-method reference is preserved in the Git history.
 
-See [`MIGRATION.md`](./MIGRATION.md) for upgrade paths (v1 → v2 and v3 → v4). The v1 method-by-method reference (`.getArgvParameters`, `.filterArrayOfSchemas`, `.activateServerTools`, `.fetch`, etc.) is preserved in the Git history.
+See the [CHANGELOG](./CHANGELOG.md) for the full 4.0.0 breaking notice.
 
 
 ## Error Handling
@@ -276,8 +275,7 @@ Schema authors should pair each tool with a `tests` array carrying at least one 
 For additional documentation and examples:
 
 - **[FlowMCP Specification v4.0.0](https://github.com/FlowMCP/flowmcp-spec)** — Complete specification (current)
-- **[MIGRATION.md](./MIGRATION.md)** — Migration guides (v1 → v2 and v3 → v4)
-- **[FILTERING.md](./FILTERING.md)** — Technical specification for `filterArrayOfSchemas()` (legacy v1 API)
+- **[MIGRATION.md](./MIGRATION.md)** — Historical v1 → v2 upgrade guide (both trees removed in 4.0.0; kept for reference). Migrate schema files to v4 with `flowmcp migrate`.
 - **tests/unit/v4/** — Reference test suite for the v4 pipeline and modules
 
 ## License & Terms of Services
