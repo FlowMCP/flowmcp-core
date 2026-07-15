@@ -203,9 +203,9 @@ describe( 'ResourceValidator', () => {
         } )
 
 
-        test( 'fails when more than 6 queries', () => {
+        test( 'fails when more than 7 queries', () => {
             const queries = {}
-            const queryNames = [ 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7' ]
+            const queryNames = [ 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8' ]
             queryNames
                 .forEach( ( name ) => {
                     queries[ name ] = { ...validQuery }
@@ -225,12 +225,35 @@ describe( 'ResourceValidator', () => {
 
             const hasQueryError = messages
                 .some( ( msg ) => {
-                    const match = msg.includes( 'Maximum 6 queries' )
+                    const match = msg.includes( 'Maximum 7 queries' )
 
                     return match
                 } )
 
             expect( hasQueryError ).toBe( true )
+        } )
+
+
+        test( 'passes a sqlite resource with exactly 7 queries', () => {
+            const queries = {}
+            const queryNames = [ 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7' ]
+            queryNames
+                .forEach( ( name ) => {
+                    queries[ name ] = { ...validQuery }
+                } )
+
+            const resources = {
+                tokenLookup: {
+                    ...validResource['tokenLookup'],
+                    queries
+                }
+            }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
         } )
 
 
@@ -1233,6 +1256,64 @@ describe( 'ResourceValidator', () => {
 
             expect( status ).toBe( true )
             expect( messages ).toEqual( [] )
+        } )
+    } )
+
+
+    describe( 'http resources', () => {
+        const validHttpResource = {
+            remoteDb: {
+                source: 'http',
+                description: 'A read-only sqlite file fetched over http, then queried locally.',
+                path: './data/remote.db',
+                url: 'https://example.com/remote.db',
+                queries: {
+                    bySymbol: { ...validQuery }
+                }
+            }
+        }
+
+        test( 'passes a valid http resource', () => {
+            const { status, messages } = ResourceValidator
+                .validate( { resources: validHttpResource } )
+
+            expect( status ).toBe( true )
+            expect( messages ).toEqual( [] )
+        } )
+
+
+        test( 'does not reject a resource solely because source is http', () => {
+            const { messages } = ResourceValidator
+                .validate( { resources: validHttpResource } )
+
+            const hasSourceError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'source' ) && msg.includes( 'Must be' )
+
+                    return match
+                } )
+
+            expect( hasSourceError ).toBe( false )
+        } )
+
+
+        test( 'fails when http resource is missing path', () => {
+            const { path, ...rest } = validHttpResource['remoteDb']
+            const resources = { remoteDb: rest }
+
+            const { status, messages } = ResourceValidator
+                .validate( { resources } )
+
+            expect( status ).toBe( false )
+
+            const hasPathError = messages
+                .some( ( msg ) => {
+                    const match = msg.includes( 'path' ) && msg.includes( 'Missing' )
+
+                    return match
+                } )
+
+            expect( hasPathError ).toBe( true )
         } )
     } )
 } )
