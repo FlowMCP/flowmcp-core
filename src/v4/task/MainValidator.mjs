@@ -386,7 +386,13 @@ class MainValidator {
             return
         }
 
-        messages.push( `${prefix}.source: Must be "sqlite" or "markdown", got "${source}"` )
+        if( source === 'http' ) {
+            MainValidator.#validateHttpResource( { resource, prefix, messages } )
+
+            return
+        }
+
+        messages.push( `${prefix}.source: Must be "sqlite", "markdown", or "http", got "${source}"` )
     }
 
 
@@ -429,16 +435,43 @@ class MainValidator {
             messages.push( `${prefix}.database: Must end with ".db", got "${resource[ 'database' ]}"` )
         }
 
-        if( resource[ 'queries' ] === undefined || resource[ 'queries' ] === null ) {
-            messages.push( `${prefix}.queries: Missing required field` )
-        } else if( typeof resource[ 'queries' ] !== 'object' || Array.isArray( resource[ 'queries' ] ) ) {
-            messages.push( `${prefix}.queries: Must be a plain object` )
-        } else {
-            const queryNames = Object.keys( resource[ 'queries' ] )
+        MainValidator.#validateResourceQueryCount( { queries: resource[ 'queries' ], prefix, messages } )
+    }
 
-            if( queryNames.length > 4 ) {
-                messages.push( `${prefix}.queries: Maximum 4 queries allowed, got ${queryNames.length}` )
-            }
+
+    // Memo 157 Kap 2 — an http resource is a file fetched over http, then queried locally
+    // (ResourceDatabaseManager requires `path`). No `database` field; queries are capped the
+    // same as sqlite.
+    static #validateHttpResource( { resource, prefix, messages } ) {
+        if( resource[ 'path' ] === undefined || resource[ 'path' ] === null ) {
+            messages.push( `${prefix}.path: Missing required field` )
+        } else if( typeof resource[ 'path' ] !== 'string' || resource[ 'path' ].trim() === '' ) {
+            messages.push( `${prefix}.path: Must be a non-empty string` )
+        }
+
+        MainValidator.#validateResourceQueryCount( { queries: resource[ 'queries' ], prefix, messages } )
+    }
+
+
+    // Memo 157 Kap 2 — the query-count ceiling is 7 (aligned with the spec and ResourceValidator),
+    // shared by the sqlite and http resource paths so the two enforcement points never drift again.
+    static #validateResourceQueryCount( { queries, prefix, messages } ) {
+        if( queries === undefined || queries === null ) {
+            messages.push( `${prefix}.queries: Missing required field` )
+
+            return
+        }
+
+        if( typeof queries !== 'object' || Array.isArray( queries ) ) {
+            messages.push( `${prefix}.queries: Must be a plain object` )
+
+            return
+        }
+
+        const queryNames = Object.keys( queries )
+
+        if( queryNames.length > 7 ) {
+            messages.push( `${prefix}.queries: Maximum 7 queries allowed, got ${queryNames.length}` )
         }
     }
 

@@ -476,6 +476,48 @@ describe( 'v4 MainValidator', () => {
             expect( status ).toBe( false )
             expect( messages.some( ( m ) => m.includes( 'source' ) && m.includes( 'markdown' ) ) ).toBe( true )
         } )
+
+        // Memo 157 Kap 2 — the sqlite query ceiling is 7 (was 4), aligned with the spec + ResourceValidator.
+        function buildQueries( { count } ) {
+            const queries = {}
+            Array.from( { length: count } )
+                .forEach( ( _unused, index ) => { queries[ `q${index}` ] = {} } )
+
+            return queries
+        }
+
+        it( 'accepts a sqlite resource with 7 queries', () => {
+            const resource = { ...buildResource(), queries: buildQueries( { count: 7 } ) }
+            const main = buildValidMain( { resources: { stuff: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( messages ).toHaveLength( 0 )
+        } )
+
+        it( 'rejects a sqlite resource with 8 queries', () => {
+            const resource = { ...buildResource(), queries: buildQueries( { count: 8 } ) }
+            const main = buildValidMain( { resources: { stuff: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'Maximum 7 queries' ) ) ).toBe( true )
+        } )
+
+        // Memo 157 Kap 2 — http resources are now a valid source (was rejected).
+        it( 'accepts an http resource with a path and queries', () => {
+            const resource = { source: 'http', description: 'd', path: './remote.db', queries: { byId: {} } }
+            const main = buildValidMain( { resources: { remote: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( true )
+            expect( messages ).toHaveLength( 0 )
+        } )
+
+        it( 'rejects an http resource missing path', () => {
+            const resource = { source: 'http', description: 'd', queries: { byId: {} } }
+            const main = buildValidMain( { resources: { remote: resource } } )
+            const { status, messages } = MainValidator.validate( { main } )
+            expect( status ).toBe( false )
+            expect( messages.some( ( m ) => m.includes( 'path' ) && m.includes( 'Missing' ) ) ).toBe( true )
+        } )
     } )
 
     describe( 'parameters validation', () => {
