@@ -15,8 +15,7 @@
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles --coverage",
-    "test:coverage:src": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles --coverage --collectCoverageFrom='src/**/*.mjs'",
-    "inspector": "npx @modelcontextprotocol/inspector"
+    "test:coverage:src": "NODE_OPTIONS='--experimental-vm-modules' npx jest --detectOpenHandles --coverage --collectCoverageFrom='src/**/*.mjs'"
   },
   "keywords": [],
   "author": "FlowMCP",
@@ -33,13 +32,11 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.9.0",
     "better-sqlite3": "^12.6.2",
     "flatted": "^3.3.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "^0.13.0",
     "jest": "^30.0.3"
   }
 }

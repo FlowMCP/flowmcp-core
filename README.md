@@ -226,6 +226,8 @@ export const skills = {
 
 See the [CHANGELOG](./CHANGELOG.md) for the full 4.0.0 breaking notice.
 
+> **MCP SDK removed.** The unused `@modelcontextprotocol/sdk` dependency was dropped from `flowmcp-core`. Core builds MCP tools in-process via `FlowMCP.loadSchema()` + `FlowMCP.prepareServerTool()` (no SDK needed to prepare tools — the consumer wires them into its own `McpServer`). For a ready-made MCP server, use [`mcp-agent-server`](https://github.com/FlowMCP/mcp-agent-server).
+
 
 ## Error Handling
 
