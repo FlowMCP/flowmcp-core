@@ -270,8 +270,6 @@ class MainValidator {
         const meta = tool[ 'meta' ]
 
         if( meta === undefined || meta === null ) {
-            messages.push( `VAL100 ${prefix}: Missing required field — meta block is mandatory in v4` )
-
             return
         }
 

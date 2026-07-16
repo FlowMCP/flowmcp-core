@@ -166,24 +166,24 @@ describe( 'v4 MainValidator', () => {
         } )
     } )
 
-    describe( 'VAL100 — meta block mandatory', () => {
-        it( 'rejects tool without meta', () => {
+    describe( 'VAL100 — meta block optional', () => {
+        it( 'accepts tool without meta (meta is optional)', () => {
             const tool = buildTool()
             delete tool.meta
             const main = buildValidMain( { tools: { getAbi: tool } } )
             const { status, messages } = MainValidator.validate( { main } )
-            expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL100' ) ) ).toBe( true )
+            expect( status ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL100' ) ) ).toBe( false )
         } )
 
-        it( 'rejects tool with meta === null', () => {
+        it( 'accepts tool with meta === null (treated as absent)', () => {
             const main = buildValidMain( { tools: { getAbi: buildTool( { meta: null } ) } } )
             const { status, messages } = MainValidator.validate( { main } )
-            expect( status ).toBe( false )
-            expect( messages.some( ( m ) => m.startsWith( 'VAL100' ) ) ).toBe( true )
+            expect( status ).toBe( true )
+            expect( messages.some( ( m ) => m.startsWith( 'VAL100' ) ) ).toBe( false )
         } )
 
-        it( 'rejects tool with meta as array', () => {
+        it( 'rejects tool with meta as array (invalid when present)', () => {
             const main = buildValidMain( { tools: { getAbi: buildTool( { meta: [] } ) } } )
             const { status, messages } = MainValidator.validate( { main } )
             expect( status ).toBe( false )
