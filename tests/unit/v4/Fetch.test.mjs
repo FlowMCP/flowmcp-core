@@ -44,6 +44,33 @@ const minimalMain = {
                     z: { primitive: 'string()', options: [] }
                 }
             ]
+        },
+        placeOrder: {
+            method: 'POST',
+            path: '/orders',
+            description: 'Place an order.',
+            parameters: [
+                {
+                    position: { key: 'symbol', value: '{{USER_PARAM}}', location: 'body' },
+                    z: { primitive: 'string()', options: [] }
+                },
+                {
+                    position: { key: 'take_profit', value: '{{USER_PARAM}}', location: 'body' },
+                    z: { primitive: 'object()', options: [ 'optional()' ] }
+                },
+                {
+                    position: { key: 'tags', value: '{{USER_PARAM}}', location: 'body' },
+                    z: { primitive: 'array()', options: [ 'optional()' ] }
+                },
+                {
+                    position: { key: 'quantity', value: '{{USER_PARAM}}', location: 'body' },
+                    z: { primitive: 'number()', options: [ 'optional()' ] }
+                },
+                {
+                    position: { key: 'reduce_only', value: '{{USER_PARAM}}', location: 'body' },
+                    z: { primitive: 'boolean()', options: [ 'optional()' ] }
+                }
+            ]
         }
     }
 }
@@ -146,6 +173,114 @@ describe( 'Fetch', () => {
                 'https://api.example.com/users?q=alice',
                 expect.objectContaining( { method: 'GET' } )
             )
+        } )
+
+
+        test( 'preserves a nested object body param (regression: [object Object] coercion)', async () => {
+            global.fetch = jest.fn( () => {
+                const response = Promise.resolve( {
+                    ok: true,
+                    json: () => Promise.resolve( {} )
+                } )
+
+                return response
+            } )
+
+            await Fetch
+                .execute( {
+                    main: minimalMain,
+                    handlerMap: {},
+                    userParams: { symbol: 'MU', take_profit: { limit_price: '900' } },
+                    serverParams: {},
+                    routeName: 'placeOrder'
+                } )
+
+            const [ , opts ] = global.fetch.mock.calls[ 0 ]
+            const sentBody = JSON.parse( opts['body'] )
+
+            expect( sentBody['take_profit'] ).toEqual( { limit_price: '900' } )
+            expect( sentBody['symbol'] ).toBe( 'MU' )
+        } )
+
+
+        test( 'preserves an array body param (regression: comma-join coercion)', async () => {
+            global.fetch = jest.fn( () => {
+                const response = Promise.resolve( {
+                    ok: true,
+                    json: () => Promise.resolve( {} )
+                } )
+
+                return response
+            } )
+
+            await Fetch
+                .execute( {
+                    main: minimalMain,
+                    handlerMap: {},
+                    userParams: { symbol: 'MU', tags: [ 'a', 'b' ] },
+                    serverParams: {},
+                    routeName: 'placeOrder'
+                } )
+
+            const [ , opts ] = global.fetch.mock.calls[ 0 ]
+            const sentBody = JSON.parse( opts['body'] )
+
+            expect( sentBody['tags'] ).toEqual( [ 'a', 'b' ] )
+        } )
+
+
+        test( 'preserves number and boolean body params', async () => {
+            global.fetch = jest.fn( () => {
+                const response = Promise.resolve( {
+                    ok: true,
+                    json: () => Promise.resolve( {} )
+                } )
+
+                return response
+            } )
+
+            await Fetch
+                .execute( {
+                    main: minimalMain,
+                    handlerMap: {},
+                    userParams: { symbol: 'MU', quantity: 3, reduce_only: true },
+                    serverParams: {},
+                    routeName: 'placeOrder'
+                } )
+
+            const [ , opts ] = global.fetch.mock.calls[ 0 ]
+            const sentBody = JSON.parse( opts['body'] )
+
+            expect( sentBody['quantity'] ).toBe( 3 )
+            expect( sentBody['reduce_only'] ).toBe( true )
+        } )
+
+
+        test( 'sends a JSON Content-Type and omits absent optional body params', async () => {
+            global.fetch = jest.fn( () => {
+                const response = Promise.resolve( {
+                    ok: true,
+                    json: () => Promise.resolve( {} )
+                } )
+
+                return response
+            } )
+
+            await Fetch
+                .execute( {
+                    main: minimalMain,
+                    handlerMap: {},
+                    userParams: { symbol: 'MU' },
+                    serverParams: {},
+                    routeName: 'placeOrder'
+                } )
+
+            const [ , opts ] = global.fetch.mock.calls[ 0 ]
+            const sentBody = JSON.parse( opts['body'] )
+
+            expect( opts['headers']['Content-Type'] ).toBe( 'application/json' )
+            expect( sentBody ).toEqual( { symbol: 'MU' } )
+            expect( Object.hasOwn( sentBody, 'take_profit' ) ).toBe( false )
         } )
 
 

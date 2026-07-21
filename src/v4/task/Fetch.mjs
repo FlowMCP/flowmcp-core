@@ -145,7 +145,7 @@ class Fetch {
             } )
             .reduce( ( acc, { position: { key, value }, required } ) => {
                 const modValue = Fetch
-                    .#insertValue( { userParams, serverParams, key, value, required } )
+                    .#insertValue( { userParams, serverParams, key, value, required, location: 'body' } )
                 acc[ key ] = modValue
 
                 return acc
@@ -232,7 +232,7 @@ class Fetch {
     }
 
 
-    static #insertValue( { userParams, serverParams, key, value, required } ) {
+    static #insertValue( { userParams, serverParams, key, value, required, location } ) {
         let type = null
         let params = null
         let paramName = null
@@ -256,6 +256,9 @@ class Fetch {
             paramName = key
             if( userParams[ key ] === undefined ) {
                 return undefined
+            }
+            if( location === 'body' && value === '{{USER_PARAM}}' ) {
+                return userParams[ key ]
             }
             value = value.replace( '{{USER_PARAM}}', userParams[ key ] )
         } else if( type === 'server' ) {
